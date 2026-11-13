@@ -305,6 +305,48 @@ export const setItemEstimate = (techId: string, logId: string, itemId: string, a
     return { items: (log.items || []).map(i => i.id === itemId ? { ...i, estimatedPay: value } : i) };
   });
 
+/**
+ * Fills `jobSource` on items filed before it was recorded. Without it, a
+ * job the tech's page can't load (archived jobs leave `assignments`) falls
+ * back to its full labor pay instead of the Field Nation fee + split
+ * (lib/payroll effectiveJobPay). Looks the job up in assignments, workOrders
+ * and the archive. Approved / paid logs are left as settled.
+ */
+export async function fillJobSources(techId: string, logId: string): Promise<number> {
+  if (!logId || typeof logId !== 'string' || logId.includes('/')) throw new WeeklyLogError('Invalid log.');
+  const ref = fs().doc(`weeklyLogs/${logId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new WeeklyLogError('Weekly log not found.', 404);
+  const log = { ...snap.data(), id: snap.id } as LogData;
+  if (log.techId !== techId) throw new WeeklyLogError('Not your weekly log.', 403);
+  if (log.status === 'Approved' || (log as any).isPaid) return 0;
+  const missing = [...new Set((log.items || []).filter(i => !i.jobSource && i.workOrderId).map(i => i.workOrderId))];
+  if (!missing.length) return 0;
+  const found = new Map<string, string>();
+  for (const id of missing.slice(0, 100)) {
+    if (id.includes('/')) continue;
+    for (const col of ['assignments', 'workOrders']) {
+      const d = await fs().doc(`${col}/${id}`).get();
+      if (d.exists) { found.set(id, String(d.data()?.source || 'Manual')); break; }
+    }
+    if (found.has(id)) continue;
+    const a = await fs().doc(`activityArchive/${id}`).get();
+    if (a.exists) {
+      let source = '';
+      try { source = JSON.parse(String(a.data()?.archivedRecordJson || '{}')).source || ''; } catch { /* unreadable copy */ }
+      found.set(id, source || 'Manual');
+    }
+  }
+  if (!found.size) return 0;
+  await fs().runTransaction(async tx => {
+    const cur = await tx.get(ref);
+    const items = ((cur.data()?.items || []) as WeeklyLogItem[]).map(i =>
+      !i.jobSource && found.has(i.workOrderId) ? { ...i, jobSource: found.get(i.workOrderId) } : i);
+    tx.update(ref, { items });
+  });
+  return found.size;
+}
+
 /** A tech flags a job. `kind` picks payroll's yes/no card (lib/disputes.ts);
  *  a fresh dispute always clears any earlier payroll decision. */
 export const disputeItem = (techId: string, logId: string, itemId: string, reason: unknown, notes: unknown, kind?: unknown) =>

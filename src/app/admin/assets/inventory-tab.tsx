@@ -22,7 +22,7 @@ import { format, parseISO } from 'date-fns';
 import { Boxes, Edit2, History, Plus, Receipt, Wrench } from 'lucide-react';
 
 /**
- * A&M → Materials: what we have on hand (cable, connectors, cameras…), with
+ * A&M → Inventory: what we have on hand (cable, connectors, cameras…), with
  * a quantity that goes up when stock is bought (+, or a tech's company-
  * purchase receipt) and down only when a sent invoice's materials are pulled
  * from stock here, by hand. Quotes never touch stock. Editing the count is
@@ -110,9 +110,9 @@ export function InventoryTab({ items, movements, categories, actorName, addOpen,
             {rows.length === 0 ? (
                 <EmptyState
                     icon={Boxes}
-                    title={items.length ? 'No materials match' : 'No materials on hand yet'}
+                    title={items.length ? 'Nothing matches' : 'Nothing in inventory yet'}
                     description={items.length ? 'Try another search or filter.' : 'Add stock here, or from a receipt not tied to a job in Financials → Reimbursements.'}
-                    action={!items.length ? <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}><Plus size={14} className="mr-1.5" /> Add first material</Button> : undefined}
+                    action={!items.length ? <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}><Plus size={14} className="mr-1.5" /> Add first item</Button> : undefined}
                 />
             ) : (
                 <div className="table-wrap rounded-xl border border-border-main bg-bg-secondary">
@@ -151,7 +151,7 @@ export function InventoryTab({ items, movements, categories, actorName, addOpen,
                             ))}
                         </TableBody>
                     </Table>
-                    <div className="px-4"><ListPager pager={pager} noun="materials" /></div>
+                    <div className="px-4"><ListPager pager={pager} noun="items" /></div>
                 </div>
             )}
 
@@ -353,14 +353,14 @@ function InventoryItemDialog({ open, item, categories, actorName, onClose }: {
                 const diff = count - (item.quantityOnHand || 0);
                 await updateDoc(doc(db, 'inventory', item.id), fields);
                 if (diff) await recordMovement({ id: item.id, name: fields.name }, { change: diff, reason: 'adjustment', note: 'Count edited', byName: actorName });
-                toast({ title: 'Material updated' });
+                toast({ title: 'Inventory item updated' });
             } else {
                 const ref = doc(collection(db, 'inventory'));
                 const batch = writeBatch(db);
                 batch.set(ref, clean({ ...fields, quantityOnHand: count, createdAt: now }));
                 if (count) batch.set(doc(collection(db, 'inventoryMovements')), { itemId: ref.id, itemName: fields.name, change: count, reason: 'adjustment', note: 'Starting count', byName: actorName, createdAt: now });
                 await batch.commit();
-                toast({ title: 'Material added', description: fields.name });
+                toast({ title: 'Added to inventory', description: fields.name });
             }
             onClose();
         } catch (e: any) {
@@ -372,7 +372,7 @@ function InventoryItemDialog({ open, item, categories, actorName, onClose }: {
         <Dialog open={open} onOpenChange={o => !o && onClose()}>
             <DialogContent className="bg-bg-elevated border-border-main max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="text-base font-semibold">{item ? 'Edit material' : 'Add material'}</DialogTitle>
+                    <DialogTitle className="text-base font-semibold">{item ? 'Edit inventory item' : 'Add inventory item'}</DialogTitle>
                     <DialogDescription className="text-[11px]">Stock on hand. What we charge clients is set in the price book.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-2">
@@ -477,7 +477,7 @@ export type ReceiptDraft = {
 
 /**
  * Financials → Reimbursements → Add to A&M on a receipt with no job: add
- * what was bought to Materials stock (new item, or more of one we have).
+ * what was bought to inventory (new item, or more of one we have).
  * Tools and equipment go to Assets instead (onAsAsset).
  */
 export function ReceiptToStockDialog({ draft, items, categories, actorName, onClose, onAsAsset }: {
@@ -503,7 +503,7 @@ export function ReceiptToStockDialog({ draft, items, categories, actorName, onCl
     const save = async () => {
         if (!draft) return;
         if (!(n > 0)) { toast({ variant: 'destructive', title: 'Enter how many were bought' }); return; }
-        if (!existing && !name.trim()) { toast({ variant: 'destructive', title: 'Name the material' }); return; }
+        if (!existing && !name.trim()) { toast({ variant: 'destructive', title: 'Name the item' }); return; }
         setSaving(true);
         try {
             const now = new Date().toISOString();
@@ -524,7 +524,7 @@ export function ReceiptToStockDialog({ draft, items, categories, actorName, onCl
                 note: draft.label, receipt: { collection: draft.collection, id: draft.id }, byName: actorName, createdAt: now,
             }));
             await batch.commit();
-            toast({ title: 'Added to Materials', description: `${itemName}: +${qty(n)} ${existing?.unitType || unitType}` });
+            toast({ title: 'Added to inventory', description: `${itemName}: +${qty(n)} ${existing?.unitType || unitType}` });
             // Mark the receipt so Financials shows where it went. Receipts are payroll-admin only.
             await updateDoc(doc(db, draft.collection, draft.id), { inventoryItemId: ref.id, inventoryItemName: itemName })
                 .catch(() => toast({ variant: 'destructive', title: 'Stock saved, receipt not linked', description: 'Only payroll admins can update receipts.' }));
@@ -538,15 +538,15 @@ export function ReceiptToStockDialog({ draft, items, categories, actorName, onCl
         <Dialog open={!!draft} onOpenChange={o => !o && onClose()}>
             <DialogContent className="bg-bg-elevated border-border-main max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="text-base font-semibold">Add purchase to Materials</DialogTitle>
+                    <DialogTitle className="text-base font-semibold">Add purchase to inventory</DialogTitle>
                     <DialogDescription className="text-[11px]">From receipt: {draft?.label}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-2">
-                    <div className="space-y-1.5"><Label className={labelCls}>Material</Label>
+                    <div className="space-y-1.5"><Label className={labelCls}>Inventory item</Label>
                         <Select value={target} onValueChange={setTarget}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="__new__">New material…</SelectItem>
+                                <SelectItem value="__new__">New item…</SelectItem>
                                 {active.map(i => <SelectItem key={i.id} value={i.id}>{i.name} ({qty(i.quantityOnHand)} {i.unitType} on hand)</SelectItem>)}
                             </SelectContent>
                         </Select>

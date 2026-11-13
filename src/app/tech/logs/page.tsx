@@ -3,7 +3,7 @@ import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { buildDailyRoute } from '@/lib/daily-route';
 import { useSessionState } from '@/hooks/use-session-state';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution, PayAdjustment } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
@@ -253,6 +253,18 @@ export default function TechWeeklyLogPage() {
     }, [assignedWorkOrders, workOrders, helperJobs, logOnlyJobs]);
     const jobsById = useMemo(() => new Map(allJobs.map(j => [j.id, j])), [allJobs]);
     const payOf = (log: WeeklyLog) => computeWeeklyLogPay(log, jobsById);
+
+    // Items filed before jobSource was saved, on jobs this page can't load
+    // (e.g. archived), would show full labor pay with no FN fee/split. Have
+    // the server fill jobSource in, once per log per visit.
+    const filledLogs = useRef(new Set<string>());
+    useEffect(() => {
+        if (!activeLog || activeLog.status === 'Approved' || (activeLog as any).isPaid || filledLogs.current.has(activeLog.id)) return;
+        const needs = (activeLog.items || []).some(i => !i.jobSource && !jobsById.has(i.workOrderId));
+        if (!needs) return;
+        filledLogs.current.add(activeLog.id);
+        weeklyLogAction('fillJobSources', { logId: activeLog.id }).catch(() => {});
+    }, [activeLog, jobsById]);
     const settlementOf = (log: WeeklyLog) => payOf(log).total;
 
     // Open post-approval disputes filed against the active log — surfaced as
@@ -974,9 +986,14 @@ export default function TechWeeklyLogPage() {
             {(() => {
                 const isEst = !estimateFinal;
                 const p = isEst ? computeWeeklyLogEstimate(activeLog, jobsById) : payOf(activeLog);
-                const hasGuess = isEst && (activeLog.items || []).some(i => i.estimatedPay != null);
+                const hasGuess = (activeLog.items || []).some(i => i.estimatedPay != null);
+                // Once payroll approves, the tech's own estimate stays on screen
+                // next to the approved total so a mismatch can be disputed.
+                const mine = !isEst && hasGuess ? computeWeeklyLogEstimate(activeLog, jobsById) : null;
+                const diff = mine ? Math.round((mine.total - p.total) * 100) / 100 : 0;
+                const cards = 3 + (p.adjustmentPay !== 0 ? 1 : 0) + (mine ? 1 : 0);
                 return (<>
-                    <div className={cn('max-w-6xl mx-auto grid gap-2 sm:gap-3 text-left', p.adjustmentPay !== 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
+                    <div className={cn('max-w-6xl mx-auto grid gap-2 sm:gap-3 text-left', cards === 3 ? 'grid-cols-3' : cards === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-5')}>
                         <div className="rounded-xl border border-border-main bg-bg-secondary px-3 py-2.5">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{isEst ? 'Estimated work pay' : 'Work pay'}</p>
                             <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary leading-tight">${p.jobPay.toFixed(2)}</p>
@@ -996,11 +1013,22 @@ export default function TechWeeklyLogPage() {
                                 </p>
                             </div>
                         )}
+                        {mine && (
+                            <div className={cn('rounded-xl border px-3 py-2.5', diff !== 0 ? 'border-accent-gold/50 bg-accent-gold/5' : 'border-border-main bg-bg-secondary')}>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Your estimate</p>
+                                <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary leading-tight">${mine.total.toFixed(2)}</p>
+                            </div>
+                        )}
                         <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">{isEst ? 'Estimated total' : 'Total'}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">{isEst ? 'Estimated total' : mine ? 'Approved total' : 'Total'}</p>
                             <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${p.total.toFixed(2)}</p>
                         </div>
                     </div>
+                    {mine && diff !== 0 && (
+                        <p className="max-w-6xl mx-auto text-[12px] text-accent-gold text-left -mt-1">
+                            Your estimate is ${Math.abs(diff).toFixed(2)} {diff > 0 ? 'more' : 'less'} than the approved total. Each job below shows your estimate next to its pay. If one is wrong, dispute that job.
+                        </p>
+                    )}
                     {isEst && (
                         <p className="max-w-6xl mx-auto text-[11px] text-text-muted text-left -mt-1">
                             {hasGuess ? 'Includes your own pay estimates. ' : ''}Estimate only — it becomes your real total when payroll approves this week.
@@ -1499,6 +1527,9 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
         id: item.workOrderId, title: `Job ${item.workOrderId.toUpperCase()}`, description: '',
         scheduleDate: item.workDate || '', scheduleTime: '', location: '', clientName: '',
         pay: item.jobPay || 0, payType: 'fixed', status: 'completed', priority: 'medium', projectType: '',
+        // Without this the placeholder reads as a manual job and "Your pay"
+        // shows the full labor pay instead of the FN fee + split.
+        source: item.jobSource,
     } as unknown as WorkOrder);
     // Field Nation lead job: show the labor pay payroll entered next to the tech's share.
     const showLabor = !isDisputed && !item.isHelper && (isImported(shown) || (!job && item.jobSource === 'Imported'));
@@ -2126,13 +2157,13 @@ function PayEstimateBox({ item, editable, onSetEstimate }: {
     };
     return (
         <div className="px-4 border-l border-border-sub/30 min-w-[130px] text-left" onClick={e => e.stopPropagation()}>
-            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Your estimate</p>
+            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider" title="What you expect for Your pay on this job (your share after the Field Nation fee and split), not the full labor pay.">Your pay estimate</p>
             {!editable ? (
                 <p className="text-sm font-mono font-bold text-text-muted">{saved != null ? `$${saved.toFixed(2)}` : '—'}</p>
             ) : (
                 <div className="flex items-center gap-1.5 mt-0.5">
                     <Input type="number" inputMode="decimal" step="0.01" min="0" value={value} placeholder="$"
-                        onChange={e => setValue(e.target.value)} className="h-9 w-24 font-mono text-[13px]" aria-label="Estimated pay" />
+                        onChange={e => setValue(e.target.value)} className="h-9 w-24 font-mono text-[13px]" aria-label="Your pay estimate" />
                     {dirty && (
                         <Button size="sm" className="h-9 px-2.5" disabled={saving || (parsed !== null && !(parsed >= 0))} onClick={save}>
                             {saving ? <Loader2 size={13} className="animate-spin" /> : 'Save'}
@@ -2140,7 +2171,7 @@ function PayEstimateBox({ item, editable, onSetEstimate }: {
                     )}
                 </div>
             )}
-            <p className="text-[11px] text-text-muted mt-0.5">Not final</p>
+            <p className="text-[11px] text-text-muted mt-0.5">{editable ? 'Your share, not labor pay' : 'Compare with Your pay'}</p>
         </div>
     );
 }

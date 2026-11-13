@@ -32,6 +32,7 @@ import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
 import { ServiceCatalogTab } from './service-catalog-tab';
 import { InventoryTab, ReceiptToStockDialog, useInventory, type ReceiptDraft } from './inventory-tab';
+import { QuickBooksExportButton } from '@/components/quickbooks-export-dialog';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { canonicalCategory, localDay, markupFor } from '@/lib/billing';
 import { materialPrice } from '@/lib/price-lines';
@@ -171,7 +172,9 @@ export default function AssetsAndMaterialsPage() {
     // Filter pills: the price-book categories plus any older category still on a material.
     const matCats = useMemo(() => [...new Set([...pricing.categories.map(c => c.name), ...materials.map(m => m.category).filter(Boolean)])], [pricing.categories, materials]);
     const { user: authUser } = useAuth();
-    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'stock' | 'materials' | 'pricing' | 'catalog'>('assets');
+    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'stock' | 'pricebook'>('assets');
+    // Price book holds the billing side: materials, labor rates & markups, service catalog.
+    const [pbTab, setPbTab] = useState<'materials' | 'pricing' | 'catalog'>('materials');
     const [logFilter, setLogFilter] = useState<'all' | 'out' | 'overdue' | 'returned'>('all');
     const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
@@ -786,7 +789,7 @@ export default function AssetsAndMaterialsPage() {
                 eyebrow="Equipment"
                 icon={Package}
                 title="Assets & materials"
-                subtitle="Company tools, vehicles and devices, plus the materials you bill for."
+                subtitle="Company tools, vehicles and devices, inventory on hand, and the price book."
                 actions={<>
                     <ViewToggle value={viewMode} onChange={setViewMode} />
                     {mainTab === 'assets' ? (
@@ -795,9 +798,9 @@ export default function AssetsAndMaterialsPage() {
                         </Button>
                     ) : mainTab === 'stock' ? (
                         <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setStockAddOpen(true)}>
-                            <Plus size={14} className="mr-1.5" /> Add material
+                            <Plus size={14} className="mr-1.5" /> Add inventory item
                         </Button>
-                    ) : mainTab === 'materials' && (
+                    ) : mainTab === 'pricebook' && pbTab === 'materials' && (
                         <>
                             <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddMaterial}>
                                 <Plus size={14} className="mr-1.5" /> Add price book item
@@ -813,11 +816,11 @@ export default function AssetsAndMaterialsPage() {
                 <StatCard label="Checked out" value={stats.checkedOut} icon={ArrowRightLeft} tone={stats.checkedOut ? 'info' : undefined} />
                 <StatCard label="Needs repair" value={stats.needsRepair} icon={Hammer} tone={stats.needsRepair ? 'progress' : undefined} />
                 <StatCard label="Lost / missing" value={stats.lost} icon={AlertTriangle} tone={stats.lost ? 'problem' : undefined} />
-                <StatCard label="Materials low on stock" value={stockItems.filter(i => i.status === 'active' && i.reorderPoint != null && i.quantityOnHand <= i.reorderPoint).length} icon={Boxes} onClick={() => setMainTab('stock')} />
+                <StatCard label="Inventory low on stock" value={stockItems.filter(i => i.status === 'active' && i.reorderPoint != null && i.quantityOnHand <= i.reorderPoint).length} icon={Boxes} onClick={() => setMainTab('stock')} />
             </StatGrid>
 
             {/* Main tabs */}
-            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'stock' | 'materials' | 'pricing' | 'catalog'); setSearch(''); }} className="w-full">
+            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'stock' | 'pricebook'); setSearch(''); }} className="w-full">
                 <TabsList className="border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 mb-5">
                     <TabsTrigger value="assets" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Boxes size={12} /> Assets ({assets.length})</span>
@@ -826,16 +829,10 @@ export default function AssetsAndMaterialsPage() {
                         <span className="flex items-center gap-2"><History size={12} /> Check-out log{logCounts.out > 0 && ` (${logCounts.out} out)`}</span>
                     </TabsTrigger>
                     <TabsTrigger value="stock" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><Archive size={12} /> Materials ({stockItems.filter(i => i.status === 'active').length})</span>
+                        <span className="flex items-center gap-2"><Archive size={12} /> Inventory ({stockItems.filter(i => i.status === 'active').length})</span>
                     </TabsTrigger>
-                    <TabsTrigger value="materials" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><ShoppingCart size={12} /> Price book ({materials.filter(m => m.status === 'active').length})</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="pricing" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><Percent size={12} /> Labor rates &amp; markups</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="catalog" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><ClipboardCheck size={12} /> Service catalog</span>
+                    <TabsTrigger value="pricebook" className={tabTriggerCls}>
+                        <span className="flex items-center gap-2"><ShoppingCart size={12} /> Price book</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -1084,6 +1081,22 @@ export default function AssetsAndMaterialsPage() {
                     <ListPager pager={logPager} noun="check-outs" />
                 </TabsContent>
 
+                {/* ── Inventory: what we have on hand, separate from the price book ── */}
+                <TabsContent value="stock" className="m-0">
+                    <InventoryTab items={stockItems} movements={stockMoves} categories={pricing.categories.map(c => c.name)} actorName={actorName} addOpen={stockAddOpen} setAddOpen={setStockAddOpen} />
+                </TabsContent>
+
+                {/* ── Price book: materials, labor rates & markups, service catalog ── */}
+                <TabsContent value="pricebook" className="m-0">
+                <Tabs value={pbTab} onValueChange={v => { setPbTab(v as 'materials' | 'pricing' | 'catalog'); setSearch(''); }} className="w-full">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+                    <TabsList className="tabs !p-0 !bg-bg-tertiary">
+                        <TabsTrigger value="materials" className="tab"><span className="flex items-center gap-1.5"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span></TabsTrigger>
+                        <TabsTrigger value="pricing" className="tab"><span className="flex items-center gap-1.5"><Percent size={12} /> Labor rates &amp; markups</span></TabsTrigger>
+                        <TabsTrigger value="catalog" className="tab"><span className="flex items-center gap-1.5"><ClipboardCheck size={12} /> Service catalog</span></TabsTrigger>
+                    </TabsList>
+                    <QuickBooksExportButton preselect={['products']} />
+                    </div>
                 <TabsContent value="materials" className="m-0">
                     {/* Category: a picker on phones (ten long names would stack
                         five rows deep), pills from sm up. */}
@@ -1228,18 +1241,14 @@ export default function AssetsAndMaterialsPage() {
                     <ListPager pager={materialPager} noun="materials" />
                 </TabsContent>
 
-                {/* ── Materials on hand (inventory), separate from the price book ── */}
-                <TabsContent value="stock" className="m-0">
-                    <InventoryTab items={stockItems} movements={stockMoves} categories={pricing.categories.map(c => c.name)} actorName={actorName} addOpen={stockAddOpen} setAddOpen={setStockAddOpen} />
-                </TabsContent>
-
-                {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
                 <TabsContent value="catalog" className="m-0">
                     <ServiceCatalogTab canEditPricing={canEditUserPay(authUser)} />
                 </TabsContent>
 
                 <TabsContent value="pricing" className="m-0">
                     <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} materials={materials} />
+                </TabsContent>
+                </Tabs>
                 </TabsContent>
             </Tabs>
 

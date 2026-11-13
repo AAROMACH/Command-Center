@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { HelpCircle, Send, X, Loader2, Mic, MicOff } from "lucide-react";
+import { HelpCircle, Send, X, Loader2, Mic, MicOff, Search } from "lucide-react";
 import { auth } from "@/lib/firebase";
+import { useAuth } from "@/contexts/auth-context";
+import { canAccessPath, portalForPath } from "@/lib/route-permissions";
+import { APP_GUIDES, type Guide } from "@/content/app-guide";
 import { HelpWalkthrough, HIGHLIGHT_CLASSES, findByText, type StepsCard } from "@/components/help-walkthrough";
 
 // Minimal Web Speech API types (not in TS's DOM lib).
@@ -46,6 +49,24 @@ export function HelpAssistant() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const [view, setView] = useState<"ask" | "guides">("ask");
+  const [guideSearch, setGuideSearch] = useState("");
+  const [openGuide, setOpenGuide] = useState<string | null>(null);
+
+  // Guides this person can follow (every page on the path is one they can
+  // open), this portal's first.
+  const portal = portalForPath(pathname);
+  const guides = useMemo(() => APP_GUIDES
+    .filter(g => g.steps.every(st => !st.path || canAccessPath(user, st.path)))
+    .sort((a, b) => Number(b.portal === portal) - Number(a.portal === portal)), [user, portal]);
+  const shownGuides = useMemo(() => {
+    const words = guideSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return guides.filter(g => words.every(w => `${g.title} ${g.keywords}`.toLowerCase().includes(w)));
+  }, [guides, guideSearch]);
+  const toCard = (g: Guide): StepsCard => ({
+    type: "steps", title: g.title, steps: g.steps, goTo: [...g.steps].reverse().find(st => st.path)?.path,
+  });
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -169,6 +190,19 @@ export function HelpAssistant() {
     }
   }
 
+  const renderCard = (card: StepsCard) => (
+    <div className="mt-2 rounded-md border border-border-sub p-2 whitespace-normal">
+      <p className="text-[12px] font-semibold text-text-primary">{card.title}</p>
+      <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-[12px] text-text-secondary">
+        {card.steps.map((s, k) => <li key={k}>{s.say}</li>)}
+      </ol>
+      <div className="mt-2 flex gap-2">
+        <button onClick={() => showMeHow(card)} className="flex-1 rounded-md bg-accent-gold/15 border border-accent-gold/40 px-2 py-1 text-[12px] font-semibold text-accent-gold">Show me how</button>
+        {card.goTo && <button onClick={() => goToPage(card)} className="flex-1 rounded-md border border-border-main px-2 py-1 text-[12px] font-semibold text-text-primary">Go to page</button>}
+      </div>
+    </div>
+  );
+
   if (walk && !open) return <HelpWalkthrough card={walk} onExit={() => setWalk(null)} />;
 
   return (
@@ -176,30 +210,27 @@ export function HelpAssistant() {
       {open ? (
         <div className="flex flex-col w-[min(22rem,calc(100vw-3rem))] h-[min(30rem,calc(100svh-6rem))] bg-bg-elevated border border-border-main rounded-lg shadow-xl overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border-sub">
-            <span className="text-sm font-semibold text-text-primary">Help</span>
+            <div className="flex items-center gap-1">
+              {(["ask", "guides"] as const).map(v => (
+                <button key={v} onClick={() => setView(v)}
+                  className={v === view ? "rounded-md bg-bg-tertiary px-2 py-0.5 text-sm font-semibold text-text-primary" : "rounded-md px-2 py-0.5 text-sm text-text-muted hover:text-text-primary"}>
+                  {v === "ask" ? "Ask" : "Guides"}
+                </button>
+              ))}
+            </div>
             <button aria-label="Close help" onClick={() => setOpen(false)} className="text-text-muted hover:text-text-primary">
               <X className="h-4 w-4" />
             </button>
           </div>
+          {view === "ask" ? (<>
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
             {messages.length === 0 && (
-              <p className="text-text-muted">Ask where to find something — e.g. &ldquo;Where do I upload job photos?&rdquo; or &ldquo;Who&rsquo;s helping on my job tomorrow?&rdquo;</p>
+              <p className="text-text-muted">Ask where to find something — e.g. &ldquo;Where do I upload job photos?&rdquo; or &ldquo;Who&rsquo;s helping on my job tomorrow?&rdquo; Or browse the <button className="underline text-accent-gold" onClick={() => setView("guides")}>Guides</button>.</p>
             )}
             {messages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "ml-8 rounded-md bg-bg-tertiary px-2.5 py-1.5 text-text-primary" : "mr-8 text-text-secondary whitespace-pre-wrap"}>
                 {m.content}
-                {m.card && (
-                  <div className="mt-2 rounded-md border border-border-sub p-2 whitespace-normal">
-                    <p className="text-[12px] font-semibold text-text-primary">{m.card.title}</p>
-                    <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-[12px]">
-                      {m.card.steps.map((s, k) => <li key={k}>{s.say}</li>)}
-                    </ol>
-                    <div className="mt-2 flex gap-2">
-                      <button onClick={() => showMeHow(m.card!)} className="flex-1 rounded-md bg-accent-gold/15 border border-accent-gold/40 px-2 py-1 text-[12px] font-semibold text-accent-gold">Show me how</button>
-                      {m.card.goTo && <button onClick={() => goToPage(m.card!)} className="flex-1 rounded-md border border-border-main px-2 py-1 text-[12px] font-semibold text-text-primary">Go to page</button>}
-                    </div>
-                  </div>
-                )}
+                {m.card && renderCard(m.card)}
               </div>
             ))}
             {busy && <Loader2 className="h-4 w-4 animate-spin text-text-muted" />}
@@ -225,6 +256,24 @@ export function HelpAssistant() {
               <Send className="h-4 w-4" />
             </button>
           </form>
+          </>) : (
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+              <input value={guideSearch} onChange={e => setGuideSearch(e.target.value)} placeholder="Search guides…"
+                className="w-full bg-bg-primary border border-border-main rounded-md pl-7 pr-2.5 py-1.5 text-base sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-gold" />
+            </div>
+            {shownGuides.length === 0 && <p className="text-text-muted">No guide matches. Try asking in the Ask tab.</p>}
+            {shownGuides.map(g => (
+              <div key={g.id} className="rounded-md border border-border-sub">
+                <button onClick={() => setOpenGuide(openGuide === g.id ? null : g.id)} className="w-full px-2.5 py-1.5 text-left text-[13px] text-text-primary hover:bg-bg-tertiary">
+                  {g.title}
+                </button>
+                {openGuide === g.id && <div className="px-2 pb-2">{renderCard(toCard(g))}</div>}
+              </div>
+            ))}
+          </div>
+          )}
         </div>
       ) : (
         <button

@@ -3,7 +3,7 @@ import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { buildDailyRoute } from '@/lib/daily-route';
 import { useSessionState } from '@/hooks/use-session-state';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution, PayAdjustment } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
@@ -253,6 +253,18 @@ export default function TechWeeklyLogPage() {
     }, [assignedWorkOrders, workOrders, helperJobs, logOnlyJobs]);
     const jobsById = useMemo(() => new Map(allJobs.map(j => [j.id, j])), [allJobs]);
     const payOf = (log: WeeklyLog) => computeWeeklyLogPay(log, jobsById);
+
+    // Items filed before jobSource was saved, on jobs this page can't load
+    // (e.g. archived), would show full labor pay with no FN fee/split. Have
+    // the server fill jobSource in, once per log per visit.
+    const filledLogs = useRef(new Set<string>());
+    useEffect(() => {
+        if (!activeLog || activeLog.status === 'Approved' || (activeLog as any).isPaid || filledLogs.current.has(activeLog.id)) return;
+        const needs = (activeLog.items || []).some(i => !i.jobSource && !jobsById.has(i.workOrderId));
+        if (!needs) return;
+        filledLogs.current.add(activeLog.id);
+        weeklyLogAction('fillJobSources', { logId: activeLog.id }).catch(() => {});
+    }, [activeLog, jobsById]);
     const settlementOf = (log: WeeklyLog) => payOf(log).total;
 
     // Open post-approval disputes filed against the active log — surfaced as
@@ -1515,6 +1527,9 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
         id: item.workOrderId, title: `Job ${item.workOrderId.toUpperCase()}`, description: '',
         scheduleDate: item.workDate || '', scheduleTime: '', location: '', clientName: '',
         pay: item.jobPay || 0, payType: 'fixed', status: 'completed', priority: 'medium', projectType: '',
+        // Without this the placeholder reads as a manual job and "Your pay"
+        // shows the full labor pay instead of the FN fee + split.
+        source: item.jobSource,
     } as unknown as WorkOrder);
     // Field Nation lead job: show the labor pay payroll entered next to the tech's share.
     const showLabor = !isDisputed && !item.isHelper && (isImported(shown) || (!job && item.jobSource === 'Imported'));

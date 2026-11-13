@@ -9,7 +9,7 @@ import { HelpWalkthrough, HIGHLIGHT_CLASSES, findByText, type StepsCard } from "
 // Minimal Web Speech API types (not in TS's DOM lib).
 type SpeechRecognitionLike = {
   lang: string; interimResults: boolean; continuous: boolean;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
   onend: (() => void) | null; onerror: (() => void) | null;
   start(): void; stop(): void; abort(): void;
 };
@@ -18,6 +18,9 @@ function getRecognition(): (new () => SpeechRecognitionLike) | null {
   const w = window as unknown as Record<string, unknown>;
   return (w.SpeechRecognition || w.webkitSpeechRecognition || null) as (new () => SpeechRecognitionLike) | null;
 }
+
+const SILENCE_MS = 8000;      // stop after this long with no speech
+const MAX_LISTEN_MS = 120000; // hard cap per tap
 
 type Msg = { role: "user" | "assistant"; content: string; card?: StepsCard };
 
@@ -55,28 +58,70 @@ export function HelpAssistant() {
   // Where it isn't available (e.g. the Android app's web view) the mic button
   // is hidden and the phone keyboard's own mic still works.
   useEffect(() => { setCanListen(!!getRecognition()); }, []);
-  useEffect(() => () => recRef.current?.abort(), []);
+  useEffect(() => () => { wantListen.current = false; recRef.current?.abort(); }, []);
 
-  function toggleListening() {
-    if (listening) { recRef.current?.stop(); return; }
+  // Keep listening through pauses: the browser ends a recognition session on
+  // its own after a short silence (sooner on phones), so we restart it until
+  // the user taps stop, goes quiet for SILENCE_MS, or hits MAX_LISTEN_MS.
+  const wantListen = useRef(false);
+  const committed = useRef("");
+  const lastHeard = useRef(0);
+  const startedAt = useRef(0);
+
+  function stopListening() {
+    wantListen.current = false;
+    recRef.current?.stop();
+  }
+
+  function startSession() {
     const Rec = getRecognition();
-    if (!Rec) return;
+    if (!Rec || !wantListen.current) return;
     const rec = new Rec();
     rec.lang = "en-US";
     rec.interimResults = true;
-    rec.continuous = false;
-    const before = input.trim() ? input.trim() + " " : "";
+    rec.continuous = true;
+    let sessionFinal = "";
     rec.onresult = e => {
-      let text = "";
-      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
-      setInput((before + text).slice(0, 2000));
+      lastHeard.current = Date.now();
+      let final = "", interim = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript;
+      }
+      sessionFinal = final;
+      setInput((committed.current + final + interim).replace(/\s+/g, " ").trimStart().slice(0, 2000));
     };
-    rec.onend = () => { setListening(false); recRef.current = null; };
-    rec.onerror = () => { setListening(false); recRef.current = null; };
+    rec.onend = () => {
+      committed.current = (committed.current + sessionFinal + " ").replace(/\s+/g, " ");
+      recRef.current = null;
+      const quiet = Date.now() - lastHeard.current > SILENCE_MS;
+      const tooLong = Date.now() - startedAt.current > MAX_LISTEN_MS;
+      if (wantListen.current && !quiet && !tooLong) startSession();
+      else { wantListen.current = false; setListening(false); setInput(committed.current.trim().slice(0, 2000)); }
+    };
+    rec.onerror = () => { /* onend follows and decides whether to restart */ };
     recRef.current = rec;
-    setListening(true);
-    rec.start();
+    try { rec.start(); } catch { wantListen.current = false; setListening(false); }
   }
+
+  function toggleListening() {
+    if (listening) { stopListening(); return; }
+    if (!getRecognition()) return;
+    committed.current = input.trim() ? input.trim() + " " : "";
+    lastHeard.current = startedAt.current = Date.now();
+    wantListen.current = true;
+    setListening(true);
+    startSession();
+  }
+
+  // Stop after a long silence even while a session is still open.
+  useEffect(() => {
+    if (!listening) return;
+    const t = setInterval(() => {
+      if (Date.now() - lastHeard.current > SILENCE_MS || Date.now() - startedAt.current > MAX_LISTEN_MS) stopListening();
+    }, 1000);
+    return () => clearInterval(t);
+  }, [listening]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -101,7 +146,7 @@ export function HelpAssistant() {
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
-    recRef.current?.stop();
+    stopListening();
     const next: Msg[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");

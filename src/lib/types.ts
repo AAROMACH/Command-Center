@@ -981,6 +981,8 @@ export type InvoiceLineItem = {
   isEmergencyProtocol?: boolean;
   /** Materials only. Older invoices have no value and tax every material. */
   taxable?: boolean;
+  /** Price-book source, e.g. `mat:<materialId>` / `svc:<id>`. */
+  itemRef?: string;
 };
 
 export type Invoice = {
@@ -994,6 +996,9 @@ export type Invoice = {
   dueDate: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
   lineItems: InvoiceLineItem[];
+  /** Set once the invoice's materials were taken out of stock (A&M →
+   *  Materials). Empty lines = nothing on it came from stock. */
+  stockPull?: { at: string; by: string; lines: { itemId: string; itemName: string; qty: number }[] };
   notes?: string;
   /** Before any plan discount. */
   subtotal: number;
@@ -1425,6 +1430,9 @@ export type InventoryItem = {
   vendor?: string;
   sku?: string;
   location?: string;
+  /** Price-book material this stock is billed as, remembered from the last
+   *  invoice pull so the next one is pre-matched. */
+  priceBookId?: string;
   /** Flag the item as low when on-hand drops to this or below. */
   reorderPoint?: number;
   notes?: string;

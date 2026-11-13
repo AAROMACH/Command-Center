@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, increment, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import type { InventoryItem, InventoryMovement, Material } from '@/lib/types';
+import type { InventoryItem, InventoryMovement, Invoice, InvoiceLineItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,11 +19,14 @@ import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import { Boxes, Edit2, History, Minus, Plus, Receipt, Wrench } from 'lucide-react';
+import { Boxes, Edit2, History, Plus, Receipt, Wrench } from 'lucide-react';
 
 /**
  * A&M → Materials: what we have on hand (cable, connectors, cameras…), with
- * a quantity that goes up when stock is bought and down when it's used.
+ * a quantity that goes up when stock is bought (+, or a tech's company-
+ * purchase receipt) and down only when a sent invoice's materials are pulled
+ * from stock here, by hand. Quotes never touch stock. Editing the count is
+ * for corrections and is logged as an adjustment.
  * Kept apart from the price book (`materials`), which only sets what we
  * charge. Every quantity change writes an `inventoryMovements` record, so an
  * item's history shows where its stock came from and went.
@@ -90,6 +93,7 @@ export function InventoryTab({ items, movements, categories, actorName, addOpen,
 
     return (
         <>
+            <InvoicesToPull items={items} actorName={actorName} />
             <div className="flex flex-wrap items-center gap-2 mb-5">
                 <SearchField className="flex-1 min-w-[200px]" placeholder="Search name, vendor, SKU, location…" value={search} onChange={setSearch} />
                 <Select value={show} onValueChange={v => setShow(v as typeof show)}>
@@ -139,7 +143,6 @@ export function InventoryTab({ items, movements, categories, actorName, addOpen,
                                     <TableCell className="text-right pr-4">
                                         <div className="flex justify-end gap-1">
                                             <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" title="Received / bought" onClick={() => setStockFor({ item: i, dir: 'in' })}><Plus size={12} /></Button>
-                                            <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" title="Used / removed" onClick={() => setStockFor({ item: i, dir: 'out' })}><Minus size={12} /></Button>
                                             <Button size="sm" variant="ghost" className="h-7 px-2" title="History" onClick={() => setHistoryFor(i)}><History size={12} /></Button>
                                             <Button size="sm" variant="ghost" className="h-7 px-2" title="Edit" onClick={() => setEditing(i)}><Edit2 size={12} /></Button>
                                         </div>
@@ -189,8 +192,130 @@ export function InventoryTab({ items, movements, categories, actorName, addOpen,
 }
 
 const REASON_LABEL: Record<InventoryMovement['reason'], string> = {
-    receipt: 'From tech receipt', purchase: 'Received', used: 'Used', adjustment: 'Count adjusted',
+    receipt: 'From tech receipt', purchase: 'Received', used: 'Used on invoice', adjustment: 'Count adjusted',
 };
+
+// ─── Sent invoices → pull materials from stock ──────────────────────────────
+
+/** Invoices sent before stock tracking began are left out of the list. */
+const STOCK_TRACKING_FROM = '2026-11-13';
+const isMaterialLine = (l: InvoiceLineItem) => l.category !== 'labor';
+const OUT_STATUSES: Invoice['status'][] = ['sent', 'overdue', 'paid'];
+
+function InvoicesToPull({ items, actorName }: { items: InventoryItem[]; actorName: string }) {
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [pulling, setPulling] = useState<Invoice | null>(null);
+    useEffect(() => onSharedSnapshot('invoices', s => setInvoices(s.docs.map(d => ({ ...d.data(), id: d.id } as Invoice))), () => setInvoices([])), []);
+    const waiting = useMemo(() => invoices
+        .filter(i => OUT_STATUSES.includes(i.status) && !i.stockPull
+            && ((i.sentAt || i.issueDate || '') >= STOCK_TRACKING_FROM)
+            && (i.lineItems || []).some(isMaterialLine))
+        .sort((a, b) => (b.sentAt || b.issueDate || '').localeCompare(a.sentAt || a.issueDate || '')), [invoices]);
+    if (!waiting.length) return null;
+    return (
+        <div className="mb-5 rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-4">
+            <p className="text-[13px] font-semibold text-text-primary">Sent invoices to pull from stock ({waiting.length})</p>
+            <p className="text-[12px] text-text-muted mb-3">Stock only goes down here. Match each invoice&apos;s materials to what came off the shelf.</p>
+            <div className="space-y-2">
+                {waiting.map(inv => (
+                    <div key={inv.id} className="flex items-center justify-between gap-3 rounded-md border border-border-sub bg-bg-secondary px-3 py-2">
+                        <div className="min-w-0">
+                            <div className="text-[13px] font-semibold text-text-primary truncate">Invoice {inv.invoiceNumber}{inv.clientName ? ` · ${inv.clientName}` : ''}</div>
+                            <div className="text-[11px] text-text-muted">{inv.lineItems.filter(isMaterialLine).length} material line(s) · sent {(inv.sentAt || inv.issueDate || '').slice(0, 10)}</div>
+                        </div>
+                        <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white shrink-0" onClick={() => setPulling(inv)}>Pull from stock</Button>
+                    </div>
+                ))}
+            </div>
+            {pulling && <PullStockDialog invoice={pulling} items={items} actorName={actorName} onClose={() => setPulling(null)} />}
+        </div>
+    );
+}
+
+function PullStockDialog({ invoice, items, actorName, onClose }: { invoice: Invoice; items: InventoryItem[]; actorName: string; onClose: () => void }) {
+    const { toast } = useToast();
+    const active = useMemo(() => items.filter(i => i.status === 'active').sort((a, b) => a.name.localeCompare(b.name)), [items]);
+    const lines = useMemo(() => invoice.lineItems.filter(isMaterialLine), [invoice]);
+    // Pre-match: stock last pulled for the same price-book material, else same name.
+    const guess = (l: InvoiceLineItem) => {
+        const pb = l.itemRef?.startsWith('mat:') ? l.itemRef.slice(4) : '';
+        const byRef = pb && active.find(i => i.priceBookId === pb);
+        const byName = active.find(i => i.name.trim().toLowerCase() === (l.description || '').trim().toLowerCase());
+        return (byRef || byName)?.id || '__none__';
+    };
+    const [picks, setPicks] = useState(() => lines.map(l => ({ itemId: guess(l), qty: String(l.quantity || 0) })));
+    const [saving, setSaving] = useState(false);
+
+    const save = async () => {
+        setSaving(true);
+        try {
+            const now = new Date().toISOString();
+            const batch = writeBatch(db);
+            const pulled: { itemId: string; itemName: string; qty: number }[] = [];
+            const totals = new Map<string, number>();
+            lines.forEach((l, idx) => {
+                const p = picks[idx];
+                const item = active.find(i => i.id === p.itemId);
+                const n = Number(p.qty);
+                if (!item || !(n > 0)) return;
+                totals.set(item.id, (totals.get(item.id) || 0) + n);
+                pulled.push({ itemId: item.id, itemName: item.name, qty: n });
+                batch.set(doc(collection(db, 'inventoryMovements')), {
+                    itemId: item.id, itemName: item.name, change: -n, reason: 'used',
+                    note: `Invoice ${invoice.invoiceNumber}${invoice.clientName ? ` · ${invoice.clientName}` : ''} · ${l.description}`,
+                    byName: actorName, createdAt: now,
+                });
+                const pb = l.itemRef?.startsWith('mat:') ? l.itemRef.slice(4) : '';
+                if (pb) batch.update(doc(db, 'inventory', item.id), { priceBookId: pb });
+            });
+            totals.forEach((n, id) => batch.update(doc(db, 'inventory', id), { quantityOnHand: increment(-n), updatedAt: now }));
+            batch.update(doc(db, 'invoices', invoice.id), { stockPull: { at: now, by: actorName, lines: pulled } });
+            await batch.commit();
+            toast({ title: pulled.length ? 'Pulled from stock' : 'Marked: nothing from stock', description: `Invoice ${invoice.invoiceNumber}` });
+            onClose();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not update stock', description: e.message });
+        } finally { setSaving(false); }
+    };
+
+    return (
+        <Dialog open onOpenChange={o => !o && onClose()}>
+            <DialogContent className="bg-bg-elevated border-border-main max-w-xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="text-base font-semibold">Pull invoice {invoice.invoiceNumber} from stock</DialogTitle>
+                    <DialogDescription className="text-[11px]">For each material, pick the stock it came from, or &quot;Not from stock&quot; (bought for the job, supplied by the client…).</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                    {lines.map((l, idx) => {
+                        const item = active.find(i => i.id === picks[idx].itemId);
+                        return (
+                            <div key={l.id || idx} className="rounded-md border border-border-sub bg-bg-secondary p-3 space-y-2">
+                                <div className="text-[12px] font-semibold text-text-primary">{l.description} <span className="font-normal text-text-muted">× {qty(Number(l.quantity) || 0)} on invoice</span></div>
+                                <div className="grid grid-cols-[1fr_90px] gap-2">
+                                    <Select value={picks[idx].itemId} onValueChange={v => setPicks(ps => ps.map((p, j) => j === idx ? { ...p, itemId: v } : p))}>
+                                        <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
+                                        <SelectContent className="bg-bg-elevated border-border-main">
+                                            <SelectItem value="__none__">Not from stock</SelectItem>
+                                            {active.map(i => <SelectItem key={i.id} value={i.id}>{i.name} ({qty(i.quantityOnHand)} {i.unitType})</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <Input type="number" className={inputCls} disabled={!item} aria-label="Quantity from stock" value={picks[idx].qty} onChange={e => setPicks(ps => ps.map((p, j) => j === idx ? { ...p, qty: e.target.value } : p))} />
+                                </div>
+                                {item && Number(picks[idx].qty) > item.quantityOnHand && (
+                                    <p className="text-[11px] text-text-red">More than the {qty(item.quantityOnHand)} {item.unitType} on hand — stock will go negative until the count is corrected.</p>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+                    <Button className="bg-brand-red hover:bg-brand-red/90 text-white" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Confirm'}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 // ─── Add / edit item ─────────────────────────────────────────────────────────
 

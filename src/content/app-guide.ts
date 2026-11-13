@@ -152,6 +152,15 @@ export const APP_GUIDES: Guide[] = [
     ],
   },
   {
+    id: 'fn-check', portal: 'admin', title: 'Check a Field Nation report against the app (pay, hours, missing jobs)',
+    keywords: 'field nation report csv compare reconcile hours pay missing work orders check',
+    steps: [
+      { say: 'Open Payroll.', path: '/admin/payroll/audit' },
+      { say: 'Click Field Nation check.', click: 'Field Nation check' },
+      { say: "Upload Field Nation's Work Order Report CSV, then review Needs a look.", click: 'Upload report' },
+    ],
+  },
+  {
     id: 'announcement', portal: 'admin', title: 'Send an announcement to techs or clients',
     keywords: 'announcement broadcast message everyone notify all',
     steps: [

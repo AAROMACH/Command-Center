@@ -67,6 +67,11 @@ export function HelpAssistant() {
   const toCard = (g: Guide): StepsCard => ({
     type: "steps", title: g.title, steps: g.steps, goTo: [...g.steps].reverse().find(st => st.path)?.path,
   });
+  // A picked guide goes into the chat as a steps card — no AI call needed.
+  const pickGuide = (g: Guide) => {
+    setView("ask");
+    setMessages(m => [...m, { role: "user", content: g.title }, { role: "assistant", content: "Here's how:", card: toCard(g) }]);
+  };
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -225,7 +230,18 @@ export function HelpAssistant() {
           {view === "ask" ? (<>
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
             {messages.length === 0 && (
-              <p className="text-text-muted">Ask where to find something — e.g. &ldquo;Where do I upload job photos?&rdquo; or &ldquo;Who&rsquo;s helping on my job tomorrow?&rdquo; Or browse the <button className="underline text-accent-gold" onClick={() => setView("guides")}>Guides</button>.</p>
+              <div className="space-y-2">
+                <p className="text-text-muted">Ask where to find something — or pick a task:</p>
+                <div className="space-y-1">
+                  {guides.filter(g => g.portal === portal).slice(0, 6).map(g => (
+                    <button key={g.id} onClick={() => pickGuide(g)}
+                      className="w-full rounded-md border border-border-sub px-2.5 py-1.5 text-left text-[13px] text-text-primary hover:bg-bg-tertiary">
+                      {g.title}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setView("guides")} className="text-[12px] font-semibold text-accent-gold">Browse all guides →</button>
+              </div>
             )}
             {messages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "ml-8 rounded-md bg-bg-tertiary px-2.5 py-1.5 text-text-primary" : "mr-8 text-text-secondary whitespace-pre-wrap"}>
@@ -239,6 +255,10 @@ export function HelpAssistant() {
             className="flex items-center gap-2 border-t border-border-sub p-2"
             onSubmit={e => { e.preventDefault(); send(); }}
           >
+            <button type="button" onClick={() => setView("guides")} title="Browse guides" aria-label="Browse guides"
+              className="shrink-0 rounded-md border border-border-main px-2 py-1 text-[12px] text-text-muted hover:text-text-primary">
+              Guides
+            </button>
             <input
               value={input}
               onChange={e => setInput(e.target.value)}

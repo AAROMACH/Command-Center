@@ -2,8 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { HelpCircle, Send, X, Loader2 } from "lucide-react";
+import { HelpCircle, Send, X, Loader2, Mic, MicOff } from "lucide-react";
 import { auth } from "@/lib/firebase";
+
+// Minimal Web Speech API types (not in TS's DOM lib).
+type SpeechRecognitionLike = {
+  lang: string; interimResults: boolean; continuous: boolean;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null; onerror: (() => void) | null;
+  start(): void; stop(): void; abort(): void;
+};
+function getRecognition(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as Record<string, unknown>;
+  return (w.SpeechRecognition || w.webkitSpeechRecognition || null) as (new () => SpeechRecognitionLike) | null;
+}
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Action = { type: "navigate"; path: string; highlight?: string } | { type: "highlight"; text: string };
@@ -58,6 +71,36 @@ export function HelpAssistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [listening, setListening] = useState(false);
+  const [canListen, setCanListen] = useState(false);
+  const recRef = useRef<SpeechRecognitionLike | null>(null);
+
+  // Voice to type: the browser's speech recognition (Chrome, Edge, Safari).
+  // Where it isn't available (e.g. the Android app's web view) the mic button
+  // is hidden and the phone keyboard's own mic still works.
+  useEffect(() => { setCanListen(!!getRecognition()); }, []);
+  useEffect(() => () => recRef.current?.abort(), []);
+
+  function toggleListening() {
+    if (listening) { recRef.current?.stop(); return; }
+    const Rec = getRecognition();
+    if (!Rec) return;
+    const rec = new Rec();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    const before = input.trim() ? input.trim() + " " : "";
+    rec.onresult = e => {
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      setInput((before + text).slice(0, 2000));
+    };
+    rec.onend = () => { setListening(false); recRef.current = null; };
+    rec.onerror = () => { setListening(false); recRef.current = null; };
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -80,6 +123,7 @@ export function HelpAssistant() {
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
+    recRef.current?.stop();
     const next: Msg[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
@@ -103,9 +147,9 @@ export function HelpAssistant() {
   }
 
   return (
-    <div data-help-assistant className="fixed z-50 right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4">
+    <div data-help-assistant className="fixed z-50 right-6 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] md:right-8 md:bottom-8">
       {open ? (
-        <div className="flex flex-col w-[min(22rem,calc(100vw-2rem))] h-[min(30rem,calc(100svh-6rem))] bg-bg-elevated border border-border-main rounded-lg shadow-xl overflow-hidden">
+        <div className="flex flex-col w-[min(22rem,calc(100vw-3rem))] h-[min(30rem,calc(100svh-6rem))] bg-bg-elevated border border-border-main rounded-lg shadow-xl overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border-sub">
             <span className="text-sm font-semibold text-text-primary">Help</span>
             <button aria-label="Close help" onClick={() => setOpen(false)} className="text-text-muted hover:text-text-primary">
@@ -131,9 +175,15 @@ export function HelpAssistant() {
               value={input}
               onChange={e => setInput(e.target.value)}
               maxLength={2000}
-              placeholder="Ask a question…"
+              placeholder={listening ? "Listening…" : "Ask a question…"}
               className="flex-1 min-w-0 bg-bg-primary border border-border-main rounded-md px-2.5 py-1.5 text-base sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-gold"
             />
+            {canListen && (
+              <button type="button" onClick={toggleListening} aria-label={listening ? "Stop voice input" : "Speak your question"}
+                className={listening ? "p-1.5 rounded-md text-text-red animate-pulse" : "p-1.5 rounded-md text-text-muted hover:text-text-primary"}>
+                {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+            )}
             <button type="submit" disabled={busy || !input.trim()} aria-label="Send" className="p-1.5 rounded-md text-accent-gold disabled:opacity-40">
               <Send className="h-4 w-4" />
             </button>

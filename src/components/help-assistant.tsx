@@ -2,44 +2,33 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { HelpCircle, Send, X, Loader2 } from "lucide-react";
+import { HelpCircle, Send, X, Loader2, Mic, MicOff } from "lucide-react";
 import { auth } from "@/lib/firebase";
+import { HelpWalkthrough, HIGHLIGHT_CLASSES, findByText, type StepsCard } from "@/components/help-walkthrough";
 
-type Msg = { role: "user" | "assistant"; content: string };
-type Action = { type: "navigate"; path: string; highlight?: string } | { type: "highlight"; text: string };
+// Minimal Web Speech API types (not in TS's DOM lib).
+type SpeechRecognitionLike = {
+  lang: string; interimResults: boolean; continuous: boolean;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null; onerror: (() => void) | null;
+  start(): void; stop(): void; abort(): void;
+};
+function getRecognition(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as Record<string, unknown>;
+  return (w.SpeechRecognition || w.webkitSpeechRecognition || null) as (new () => SpeechRecognitionLike) | null;
+}
 
-const HIGHLIGHT_CLASSES = ["ring-2", "ring-accent-gold", "ring-offset-2", "ring-offset-bg-primary", "rounded-md", "animate-pulse"];
+type Msg = { role: "user" | "assistant"; content: string; card?: StepsCard };
 
-/** Flash an element for a few seconds. */
+/** Flash an element briefly. */
 function flash(el: Element) {
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.add(...HIGHLIGHT_CLASSES);
   setTimeout(() => el.classList.remove(...HIGHLIGHT_CLASSES), 4000);
 }
 
-/** Smallest visible clickable/heading element whose text matches `text` (outside the assistant panel). */
-function findByText(text: string): Element | null {
-  const want = text.trim().toLowerCase();
-  if (!want) return null;
-  const candidates = document.querySelectorAll(
-    'main button, main a, main [role="tab"], main h1, main h2, main h3, main label, main [role="button"], main th, [data-sidebar] a',
-  );
-  let best: Element | null = null;
-  let bestLen = Infinity;
-  for (const el of candidates) {
-    if (el.closest("[data-help-assistant]")) continue;
-    const t = (el.textContent || "").trim().toLowerCase();
-    if (!t.includes(want)) continue;
-    const r = (el as HTMLElement).getBoundingClientRect();
-    if (!r.width && !r.height) continue;
-    const exact = t === want ? 0 : 1;
-    const score = exact * 1000 + t.length;
-    if (score < bestLen) { best = el; bestLen = score; }
-  }
-  return best;
-}
-
-/** Retry for a few seconds — pages load their lists after they render. */
+/** Retry for a few seconds — pages and dialogs load after they render. */
 function highlightWhenReady(text: string) {
   let tries = 0;
   const tick = () => {
@@ -47,7 +36,7 @@ function highlightWhenReady(text: string) {
     if (el) return flash(el);
     if (tries++ < 16) setTimeout(tick, 250);
   };
-  setTimeout(tick, 150);
+  setTimeout(tick, 300);
 }
 
 export function HelpAssistant() {
@@ -58,28 +47,61 @@ export function HelpAssistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [listening, setListening] = useState(false);
+  const [canListen, setCanListen] = useState(false);
+  const recRef = useRef<SpeechRecognitionLike | null>(null);
+
+  // Voice to type: the browser's speech recognition (Chrome, Edge, Safari).
+  // Where it isn't available (e.g. the Android app's web view) the mic button
+  // is hidden and the phone keyboard's own mic still works.
+  useEffect(() => { setCanListen(!!getRecognition()); }, []);
+  useEffect(() => () => recRef.current?.abort(), []);
+
+  function toggleListening() {
+    if (listening) { recRef.current?.stop(); return; }
+    const Rec = getRecognition();
+    if (!Rec) return;
+    const rec = new Rec();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    const before = input.trim() ? input.trim() + " " : "";
+    rec.onresult = e => {
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      setInput((before + text).slice(0, 2000));
+    };
+    rec.onend = () => { setListening(false); recRef.current = null; };
+    rec.onerror = () => { setListening(false); recRef.current = null; };
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, busy]);
 
-  function runActions(actions: Action[]) {
-    for (const a of actions) {
-      if (a.type === "navigate") {
-        if (a.path !== pathname) router.push(a.path);
-        // Point at the sidebar entry too, so they learn where it lives.
-        const nav = document.querySelector(`a[data-sidebar][href="${CSS.escape(a.path)}"], [data-sidebar] a[href="${CSS.escape(a.path)}"]`);
-        if (nav) flash(nav);
-        if (a.highlight) highlightWhenReady(a.highlight);
-      } else {
-        highlightWhenReady(a.text);
-      }
-    }
+  const [walk, setWalk] = useState<StepsCard | null>(null);
+
+  // "Go to page": straight to the end of the path, pointing at the last button.
+  function goToPage(card: StepsCard) {
+    if (card.goTo && card.goTo !== pathname) router.push(card.goTo);
+    const lastClick = [...card.steps].reverse().find(s => s.click)?.click;
+    if (lastClick) highlightWhenReady(lastClick);
+    setOpen(false);
+  }
+
+  // "Show me how": close the chat and walk them through it on the real screen.
+  function showMeHow(card: StepsCard) {
+    setOpen(false);
+    setWalk(card);
   }
 
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
+    recRef.current?.stop();
     const next: Msg[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
@@ -93,8 +115,8 @@ export function HelpAssistant() {
       });
       const data = await res.json().catch(() => ({}));
       const reply = res.ok ? (data.reply as string) : (data.error as string) || "Something went wrong.";
-      setMessages(m => [...m, { role: "assistant", content: reply }]);
-      if (res.ok && Array.isArray(data.actions)) runActions(data.actions);
+      const card = res.ok && Array.isArray(data.actions) ? (data.actions as StepsCard[]).find(x => x?.type === "steps") : undefined;
+      setMessages(m => [...m, { role: "assistant", content: reply, card }]);
     } catch {
       setMessages(m => [...m, { role: "assistant", content: "Couldn't reach the assistant. Check your connection." }]);
     } finally {
@@ -102,10 +124,12 @@ export function HelpAssistant() {
     }
   }
 
+  if (walk && !open) return <HelpWalkthrough card={walk} onExit={() => setWalk(null)} />;
+
   return (
-    <div data-help-assistant className="fixed z-50 right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4">
+    <div data-help-assistant className="fixed z-50 right-6 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] md:right-8 md:bottom-8">
       {open ? (
-        <div className="flex flex-col w-[min(22rem,calc(100vw-2rem))] h-[min(30rem,calc(100svh-6rem))] bg-bg-elevated border border-border-main rounded-lg shadow-xl overflow-hidden">
+        <div className="flex flex-col w-[min(22rem,calc(100vw-3rem))] h-[min(30rem,calc(100svh-6rem))] bg-bg-elevated border border-border-main rounded-lg shadow-xl overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border-sub">
             <span className="text-sm font-semibold text-text-primary">Help</span>
             <button aria-label="Close help" onClick={() => setOpen(false)} className="text-text-muted hover:text-text-primary">
@@ -119,6 +143,18 @@ export function HelpAssistant() {
             {messages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "ml-8 rounded-md bg-bg-tertiary px-2.5 py-1.5 text-text-primary" : "mr-8 text-text-secondary whitespace-pre-wrap"}>
                 {m.content}
+                {m.card && (
+                  <div className="mt-2 rounded-md border border-border-sub p-2 whitespace-normal">
+                    <p className="text-[12px] font-semibold text-text-primary">{m.card.title}</p>
+                    <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-[12px]">
+                      {m.card.steps.map((s, k) => <li key={k}>{s.say}</li>)}
+                    </ol>
+                    <div className="mt-2 flex gap-2">
+                      <button onClick={() => showMeHow(m.card!)} className="flex-1 rounded-md bg-accent-gold/15 border border-accent-gold/40 px-2 py-1 text-[12px] font-semibold text-accent-gold">Show me how</button>
+                      {m.card.goTo && <button onClick={() => goToPage(m.card!)} className="flex-1 rounded-md border border-border-main px-2 py-1 text-[12px] font-semibold text-text-primary">Go to page</button>}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {busy && <Loader2 className="h-4 w-4 animate-spin text-text-muted" />}
@@ -131,9 +167,15 @@ export function HelpAssistant() {
               value={input}
               onChange={e => setInput(e.target.value)}
               maxLength={2000}
-              placeholder="Ask a question…"
+              placeholder={listening ? "Listening…" : "Ask a question…"}
               className="flex-1 min-w-0 bg-bg-primary border border-border-main rounded-md px-2.5 py-1.5 text-base sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-gold"
             />
+            {canListen && (
+              <button type="button" onClick={toggleListening} aria-label={listening ? "Stop voice input" : "Speak your question"}
+                className={listening ? "p-1.5 rounded-md text-text-red animate-pulse" : "p-1.5 rounded-md text-text-muted hover:text-text-primary"}>
+                {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+            )}
             <button type="submit" disabled={busy || !input.trim()} aria-label="Send" className="p-1.5 rounded-md text-accent-gold disabled:opacity-40">
               <Send className="h-4 w-4" />
             </button>

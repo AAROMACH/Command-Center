@@ -278,8 +278,10 @@ export default function AssignmentsHubPage() {
         const matchesSearch = jobMatchesSearch(wo, deferredSearch, techById);
 
         const matchesDate = !dateRange?.from || (() => {
+            // With a date picked, a job with no (readable) date isn't on it —
+            // it used to slip through to the list and the map.
             const woDate = parseTacticalDate(wo.scheduleDate);
-            if (!woDate) return true;
+            if (!woDate) return false;
             const start = startOfDay(dateRange.from!);
             const end = dateRange.to ? startOfDay(dateRange.to) : start;
             return woDate >= start && woDate <= end;

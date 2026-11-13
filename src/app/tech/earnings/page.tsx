@@ -96,6 +96,7 @@ export default function TechEarningsPage() {
         description: '',
         relatedJobId: '',
         notes: '',
+        purchaseType: 'personal' as 'personal' | 'company',
     });
     const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -277,15 +278,16 @@ export default function TechEarningsPage() {
                 purchaseDate: receiptForm.purchaseDate,
                 description: receiptForm.description.trim(),
                 notes: receiptForm.notes.trim() || null,
-                ...(receiptForm.relatedJobId && { relatedJobId: receiptForm.relatedJobId }),
+                purchaseType: receiptForm.purchaseType,
+                ...(receiptForm.purchaseType === 'personal' && receiptForm.relatedJobId && { relatedJobId: receiptForm.relatedJobId }),
                 ...(receiptPhotoUrl && { receiptPhotoUrls: [receiptPhotoUrl] }),
                 submittedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
             });
             NotificationService.notifyPayrollAdmins('Reimbursement requested',
-                `${tech?.name || 'A technician'} submitted a $${amount.toFixed(2)} receipt${receiptForm.vendorName.trim() ? ` from ${receiptForm.vendorName.trim()}` : ''}: ${receiptForm.description.trim().slice(0, 120)}.`).catch(() => {});
+                `${tech?.name || 'A technician'} submitted a $${amount.toFixed(2)} ${receiptForm.purchaseType === 'company' ? 'company purchase' : 'receipt'}${receiptForm.vendorName.trim() ? ` from ${receiptForm.vendorName.trim()}` : ''}: ${receiptForm.description.trim().slice(0, 120)}.`).catch(() => {});
             toast({ title: 'Receipt submitted', description: 'Your reimbursement request is pending review.' });
-            setReceiptForm({ vendorName: '', purchaseDate: '', amount: '', description: '', relatedJobId: '', notes: '' });
+            setReceiptForm({ vendorName: '', purchaseDate: '', amount: '', description: '', relatedJobId: '', notes: '', purchaseType: 'personal' });
             setReceiptPhotoUrl(null);
             setIsReimDialogOpen(false);
         } catch (err: any) {
@@ -825,6 +827,19 @@ export default function TechEarningsPage() {
                     {/* RECEIPT FORM */}
                     {reimType === 'receipt' && (
                         <div className="space-y-4 pt-1">
+                            <div className="space-y-2">
+                                <Label className="text-[12px] font-semibold text-text-muted">Type *</Label>
+                                <Select value={receiptForm.purchaseType} onValueChange={v => setReceiptForm(p => ({ ...p, purchaseType: v as 'personal' | 'company', relatedJobId: v === 'company' ? '' : p.relatedJobId }))}>
+                                    <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-main"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="bg-bg-elevated border-border-main">
+                                        <SelectItem value="personal" className="text-xs">Personal reimbursement</SelectItem>
+                                        <SelectItem value="company" className="text-xs">Company purchase (shop stock / tools)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {receiptForm.purchaseType === 'company' && (
+                                    <p className="text-[12px] text-text-muted">Stock or tools the company keeps, not for a specific job. You still get reimbursed.</p>
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-[12px] font-semibold text-text-muted">Purchase date *</Label>
@@ -843,7 +858,7 @@ export default function TechEarningsPage() {
                                 <Label className="text-[12px] font-semibold text-text-muted">Description *</Label>
                                 <Input value={receiptForm.description} onChange={e => setReceiptForm(p => ({ ...p, description: e.target.value }))} className="h-10 text-xs" placeholder="What was purchased?" />
                             </div>
-                            <div className="space-y-2">
+                            {receiptForm.purchaseType === 'personal' && <div className="space-y-2">
                                 <Label className="text-[12px] font-semibold text-text-muted">Related job (optional)</Label>
                                 <Select value={receiptForm.relatedJobId} onValueChange={v => setReceiptForm(p => ({ ...p, relatedJobId: v === '__none__' ? '' : v }))}>
                                     <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-main">
@@ -858,7 +873,7 @@ export default function TechEarningsPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            </div>
+                            </div>}
                             <div className="space-y-2">
                                 <Label className="text-[12px] font-semibold text-text-muted">Notes</Label>
                                 <Input value={receiptForm.notes} onChange={e => setReceiptForm(p => ({ ...p, notes: e.target.value }))} className="h-10 text-xs" placeholder="Optional notes" />

@@ -914,6 +914,12 @@ export type Expense = {
   amount: number;
   status: 'Pending' | 'Approved' | 'Rejected';
   projectId?: string;
+  /** Set when a non-job purchase was added to Assets & Materials. */
+  assetId?: string;
+  assetName?: string;
+  /** Set when a non-job purchase was added to A&M → Materials stock. */
+  inventoryItemId?: string;
+  inventoryItemName?: string;
 };
 
 export type Reimbursement = {
@@ -935,10 +941,21 @@ export type Reimbursement = {
   createdAt: string;
   updatedAt?: string;
   // Receipt fields
+  /** personal = the tech's own work expense (usually for a job);
+   *  company = bought for the company (shop stock, tools), no job.
+   *  Admins can add company purchases to Assets & Materials.
+   *  Unset on older receipts. Both are reimbursed to the tech. */
+  purchaseType?: 'personal' | 'company';
   vendorName?: string;
   purchaseDate?: string;
   description?: string;
   receiptPhotoUrls?: string[];
+  /** Set when a non-job purchase was added to Assets & Materials. */
+  assetId?: string;
+  assetName?: string;
+  /** Set when a non-job purchase was added to A&M → Materials stock. */
+  inventoryItemId?: string;
+  inventoryItemName?: string;
   // Mileage fields
   fromLocation?: string;
   toLocation?: string;
@@ -964,6 +981,8 @@ export type InvoiceLineItem = {
   isEmergencyProtocol?: boolean;
   /** Materials only. Older invoices have no value and tax every material. */
   taxable?: boolean;
+  /** Price-book source, e.g. `mat:<materialId>` / `svc:<id>`. */
+  itemRef?: string;
 };
 
 export type Invoice = {
@@ -977,6 +996,9 @@ export type Invoice = {
   dueDate: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
   lineItems: InvoiceLineItem[];
+  /** Set once the invoice's materials were taken out of stock (A&M →
+   *  Materials). Empty lines = nothing on it came from stock. */
+  stockPull?: { at: string; by: string; lines: { itemId: string; itemName: string; qty: number }[] };
   notes?: string;
   /** Before any plan discount. */
   subtotal: number;
@@ -1360,6 +1382,9 @@ export type Asset = {
   notes?: string;
   photoUrls?: string[];
   documents?: string[];
+  /** The company-purchase receipt this asset was added from (Financials →
+   *  Reimbursements → Add to A&M). */
+  sourceReceipt?: { collection: 'reimbursements' | 'expenses'; id: string };
   createdAt: string;
   updatedAt?: string;
 };
@@ -1390,6 +1415,46 @@ export type Material = {
   notes?: string;
   createdAt: string;
   updatedAt?: string;
+};
+
+/** Materials on hand (A&M → Materials). Separate from the price book
+ *  (`materials`), which only says what we charge for an item. */
+export type InventoryItem = {
+  id: string;
+  name: string;
+  category?: string;
+  unitType: Material['unitType'];
+  quantityOnHand: number;
+  /** Latest cost per unit, from the most recent receipt or edit. */
+  unitCost?: number;
+  vendor?: string;
+  sku?: string;
+  location?: string;
+  /** Price-book material this stock is billed as, remembered from the last
+   *  invoice pull so the next one is pre-matched. */
+  priceBookId?: string;
+  /** Flag the item as low when on-hand drops to this or below. */
+  reorderPoint?: number;
+  notes?: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt?: string;
+};
+
+/** One change to an inventory item's quantity on hand. */
+export type InventoryMovement = {
+  id: string;
+  itemId: string;
+  itemName: string;
+  /** + received, − used/removed. */
+  change: number;
+  reason: 'receipt' | 'purchase' | 'used' | 'adjustment';
+  note?: string;
+  /** Total cost of what was received, when known. */
+  cost?: number;
+  receipt?: { collection: 'reimbursements' | 'expenses'; id: string };
+  byName: string;
+  createdAt: string;
 };
 
 export type AssetAssignment = {

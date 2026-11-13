@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
@@ -60,6 +61,8 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
         relatedName: '',
         relatedType: '' as 'Assignment' | 'Project' | ''
     });
+    const [purchaseType, setPurchaseType] = useState<'personal' | 'company'>('personal');
+    const isCompany = purchaseType === 'company';
     const { toast } = useToast();
 
     const handleFileClick = () => {
@@ -94,11 +97,11 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
     };
 
     const handleSave = async () => {
-        if (!extractedData.merchant || !extractedData.amount || !extractedData.relatedId) {
+        if (!extractedData.merchant || !extractedData.amount || (!isCompany && !extractedData.relatedId)) {
             toast({
                 variant: 'destructive',
                 title: 'Missing details',
-                description: 'Enter the vendor and amount, and pick a job or project.',
+                description: isCompany ? 'Enter the vendor and amount.' : 'Enter the vendor and amount, and pick a job or project.',
             });
             return;
         }
@@ -127,6 +130,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                 amount,
                 vendorName: extractedData.merchant,
                 purchaseDate: extractedData.date,
+                purchaseType,
                 submittedAt: now,
                 createdAt: now,
             };
@@ -135,7 +139,9 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                 reimbursementDoc.receiptPhotoUrls = [receiptPhotoUrl];
             }
 
-            if (extractedData.relatedType === 'Assignment') {
+            if (isCompany) {
+                // Company stock / tools: no job.
+            } else if (extractedData.relatedType === 'Assignment') {
                 reimbursementDoc.relatedJobId = extractedData.relatedId;
                 reimbursementDoc.relatedJobTitle = extractedData.relatedName;
             } else if (extractedData.relatedType === 'Project') {
@@ -164,6 +170,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
         setReceiptImage(null);
         uploadedFileRef.current = null;
         setExtractedData({ merchant: '', date: '', amount: '', relatedId: '', relatedName: '', relatedType: '' });
+        setPurchaseType('personal');
         setIsOpen(false);
     };
 
@@ -302,7 +309,19 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                                 />
                             </div>
 
-                            <div className="space-y-2 text-left">
+                            <div className="space-y-1.5 text-left">
+                                <Label className="text-[12px] font-semibold text-text-muted">Type</Label>
+                                <Select value={purchaseType} onValueChange={v => setPurchaseType(v as 'personal' | 'company')}>
+                                    <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-sub"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="bg-bg-elevated border-border-main">
+                                        <SelectItem value="personal" className="text-xs">Personal reimbursement</SelectItem>
+                                        <SelectItem value="company" className="text-xs">Company purchase (shop stock / tools)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {isCompany && <p className="text-[12px] text-text-muted">Stock or tools the company keeps, not for a specific job. You still get reimbursed.</p>}
+                            </div>
+
+                            {!isCompany && <div className="space-y-2 text-left">
                                 <Label className="text-[12px] font-semibold text-text-muted">Job or project</Label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -344,7 +363,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                                         </div>
                                     </ScrollArea>
                                 </div>
-                            </div>
+                            </div>}
                         </div>
                     )}
                 </div>
@@ -357,7 +376,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                         <Button
                             onClick={handleSave}
                             className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1"
-                            disabled={!extractedData.relatedId || isSaving}
+                            disabled={(!isCompany && !extractedData.relatedId) || isSaving}
                         >
                             {isSaving ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
                             {isSaving ? 'Uploading...' : 'Submit receipt'}

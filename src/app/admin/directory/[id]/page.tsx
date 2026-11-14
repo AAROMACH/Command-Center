@@ -461,7 +461,7 @@ export default function DirectoryPersonPage() {
         title={person.name || 'Unnamed'}
         subtitle={roles.length ? roles.map(r => statusLabel(r)).join(' · ') : undefined}
         actions={<>
-          {isClient && (
+          {isClient && hasPermission(me, 'admin.clients.view') && (
             <Button
               size="sm"
               variant="outline"

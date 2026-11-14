@@ -48,6 +48,8 @@ export type StaffPayEntry = {
   /** What was actually paid (0 when skipped). */
   paid: number;
   status: 'paid' | 'skipped';
+  /** A one-off payout of any amount against what's banked/owed, not tied to a week's schedule. */
+  kind?: 'week' | 'bank_payout';
   note?: string | null;
   by: string;
   at: string;
@@ -70,6 +72,8 @@ export type PlanSummary = {
   unrecorded: PlanWeek[];
   /** Installment only. */
   remaining: number | null;
+  /** One-off payouts from the bank, newest first. */
+  bankPayouts: StaffPayEntry[];
   done: boolean;
 };
 
@@ -78,7 +82,10 @@ export type PlanSummary = {
  * schedule stops once what's been paid plus what's scheduled reaches the total.
  */
 export function summarizePlan(plan: StaffPayPlan, entries: StaffPayEntry[], currentWeek = reportingWeekOf()): PlanSummary {
-  const byWeek = new Map(entries.filter(e => e.planId === plan.id).map(e => [e.weekOf, e]));
+  const mine = entries.filter(e => e.planId === plan.id);
+  const bankPayouts = mine.filter(e => e.kind === 'bank_payout').sort((a, b) => b.at.localeCompare(a.at));
+  const bankPaid = r2(bankPayouts.reduce((t, e) => t + (e.paid || 0), 0));
+  const byWeek = new Map(mine.filter(e => e.kind !== 'bank_payout').map(e => [e.weekOf, e]));
   const weeks: PlanWeek[] = [];
   const end = toDate(currentWeek);
   let scheduledSoFar = 0;
@@ -99,15 +106,15 @@ export function summarizePlan(plan: StaffPayPlan, entries: StaffPayEntry[], curr
   weeks.sort((a, b) => weekKey(b.weekOf).localeCompare(weekKey(a.weekOf)));
 
   const recorded = weeks.filter(w => w.entry);
-  const paidTotal = r2(recorded.reduce((s, w) => s + (w.entry!.paid || 0), 0));
-  const banked = r2(Math.max(0, recorded.reduce((s, w) => s + (w.entry!.scheduled - (w.entry!.paid || 0)), 0)));
+  const paidTotal = r2(recorded.reduce((s, w) => s + (w.entry!.paid || 0), 0) + bankPaid);
+  const banked = r2(Math.max(0, recorded.reduce((s, w) => s + (w.entry!.scheduled - (w.entry!.paid || 0)), 0) - bankPaid));
   const remaining = plan.kind === 'installment' && plan.total != null ? r2(Math.max(0, plan.total - paidTotal)) : null;
   return {
     weeks,
     thisWeek: weeks.find(w => w.weekOf === currentWeek) || null,
     paidTotal, banked,
     unrecorded: weeks.filter(w => !w.entry && w.weekOf !== currentWeek && w.scheduled > 0),
-    remaining,
+    remaining, bankPayouts,
     done: remaining != null && remaining <= 0,
   };
 }
@@ -158,6 +165,18 @@ export async function recordStaffPayWeek(plan: StaffPayPlan, weekOf: string, sch
     id: entryId(plan.id, weekOf), planId: plan.id, personId: plan.personId, weekOf,
     scheduled: r2(scheduled), paid: status === 'skipped' ? 0 : r2(Math.max(0, paid)), status,
     note: note?.trim() || null, by, at: new Date().toISOString(),
+  };
+  await setDoc(doc(db, 'staffPayEntries', e.id), JSON.parse(JSON.stringify(e)));
+}
+
+/** Pay any amount out of what's banked (recurring) or still owed (installment), with a note. */
+export async function payFromBank(plan: StaffPayPlan, amount: number, by: string, note?: string): Promise<void> {
+  const paid = r2(Number(amount) || 0);
+  if (paid <= 0) throw new Error('Enter an amount above $0.');
+  const at = new Date().toISOString();
+  const e: StaffPayEntry = {
+    id: `${plan.id}_bank_${Date.now().toString(36)}`, planId: plan.id, personId: plan.personId, weekOf: reportingWeekOf(),
+    scheduled: 0, paid, status: 'paid', kind: 'bank_payout', note: note?.trim() || null, by, at,
   };
   await setDoc(doc(db, 'staffPayEntries', e.id), JSON.parse(JSON.stringify(e)));
 }

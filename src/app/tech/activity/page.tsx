@@ -9,15 +9,16 @@ import type { WeeklyLog, WorkOrder } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { Activity, AlertTriangle, ArrowDown, ArrowUp, Filter, RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import { isAssignedTo } from '@/lib/jobs';
 import { median } from '@/lib/customer-intel';
 import { statusTone, TONE_TEXT } from '@/lib/status-styles';
 import { buildTechJobRows, PAY_STATUS_LABELS, type PayStatus, type TechJobRow } from '@/lib/tech-intel';
-import { HBars, Tip } from '@/app/admin/analytics/components/customer-dashboard';
+import { HBars } from '@/components/chart-bits';
+import dynamic from 'next/dynamic';
+// recharts is heavy: the chart loads after the page, same-height placeholder meanwhile.
+const PayChart = dynamic(() => import('./pay-chart'), { ssr: false, loading: () => <div className="h-[260px] w-full animate-pulse rounded-md bg-bg-tertiary/40" /> });
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { PageHeader } from '@/components/page-header';
@@ -245,19 +246,7 @@ export default function TechActivityPage() {
             </CardHeader>
             <CardContent>
               {monthly.length === 0 ? <EmptyState compact title="No completed jobs in this view" /> : (
-                <ChartContainer config={{ approved: { label: 'Approved', color: 'var(--text-green)' }, pending: { label: 'Pending', color: 'var(--accent-gold)' } } satisfies ChartConfig} className="w-full h-[260px]">
-                  <BarChart data={monthly} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={monthLabel} minTickGap={8} />
-                    <YAxis tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={v => `$${v}`} width={48} />
-                    <Tooltip cursor={{ opacity: 0.1 }} content={({ payload }) => {
-                      const d = payload?.[0]?.payload as { month: string; approved: number; pending: number } | undefined;
-                      return d ? <Tip title={monthLabel(d.month)} lines={[`${money(d.approved)} approved`, `${money(d.pending)} pending`]} /> : null;
-                    }} />
-                    <Bar dataKey="approved" stackId="p" fill="var(--color-approved)" />
-                    <Bar dataKey="pending" stackId="p" fill="var(--color-pending)" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
+                <PayChart monthly={monthly} />
               )}
             </CardContent>
           </Card>

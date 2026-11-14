@@ -16,8 +16,11 @@ const TZ = 'America/Detroit';
 
 type Req = Record<string, any> & { id: string };
 
-const firstName = (r: Req) => String(r.fullName || r.primaryContactName || '').trim().split(/\s+/)[0] || 'there';
-const refOf = (r: Req) => String(r.requestCode || r.id).toUpperCase();
+// Both come from a public form, so keep them to plain name / code characters:
+// no links or long text riding along in an email sent from our domain.
+const firstName = (r: Req) =>
+  String(r.fullName || r.primaryContactName || '').trim().split(/\s+/)[0].replace(/[^\p{L}'-]/gu, '').slice(0, 30) || 'there';
+const refOf = (r: Req) => (String(r.requestCode || '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 24) || r.id).toUpperCase();
 const whatOf = (r: Req) => (r.source === 'client_intake_form' ? 'partnership request' : 'service request');
 export const createdAtOf = (r: Req): Date | null => {
   const c = r.createdAt;

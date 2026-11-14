@@ -8,7 +8,7 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { isClient } from '@/lib/permissions';
 import { reportingWeekOf } from '@/lib/weekly-log-core';
 import {
-  createStaffPayPlan, recordStaffPayWeek, setStaffPayPaused, summarizePlan, updateStaffPayPlan,
+  createStaffPayPlan, payFromBank, recordStaffPayWeek, setStaffPayPaused, summarizePlan, updateStaffPayPlan,
   type PlanSummary, type PlanWeek, type StaffPayEntry, type StaffPayPlan,
 } from '@/lib/staff-pay';
 import type { Technician } from '@/lib/types';
@@ -100,6 +100,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
   const [open, setOpen] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<StaffPayPlan | null>(null);
+  const [bankPay, setBankPay] = useState<{ plan: StaffPayPlan; max: number } | null>(null);
   const [recording, setRecording] = useState<{ plan: StaffPayPlan; week: PlanWeek; banked: number } | null>(null);
 
   useEffect(() => {
@@ -158,6 +159,20 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
                 )}
               </div>
               <PlanTotals plan={plan} s={s} />
+              {canEdit && (plan.kind === 'installment' ? (s.remaining || 0) : s.banked) > 0 && (
+                <Button size="sm" variant="outline" className="h-8" onClick={() => setBankPay({ plan, max: plan.kind === 'installment' ? (s.remaining || 0) : s.banked })}>
+                  <PiggyBank size={13} className="mr-1" /> Pay from bank
+                </Button>
+              )}
+              {s.bankPayouts.length > 0 && (
+                <div className="space-y-0.5 text-[12px]">
+                  {s.bankPayouts.map(e => (
+                    <p key={e.id} className="text-text-secondary">
+                      <span className="font-mono font-semibold text-text-green">{money(e.paid)}</span> paid from bank · {new Date(e.at).toLocaleDateString()} · {e.by}{e.note ? ` — ${e.note}` : ''}
+                    </p>
+                  ))}
+                </div>
+              )}
 
               {plan.active && !s.done && canEdit && toMark.length > 0 && plan.kind === 'recurring' && (
                 <div className="space-y-1.5">
@@ -209,6 +224,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
 
       <AddPlanDialog open={adding || !!editing} editing={editing} onClose={() => { setAdding(false); setEditing(null); }} people={people} by={by} />
       <RecordPaidDialog rec={recording} onClose={() => setRecording(null)} by={by} />
+      <BankPayDialog rec={bankPay} onClose={() => setBankPay(null)} by={by} />
     </div>
   );
 }
@@ -371,5 +387,49 @@ export function MyStaffPay({ userId }: { userId: string }) {
         );
       })}
     </div>
+  );
+}
+
+/** Pay any amount out of what's banked / still owed — not tied to a week's fixed amount. */
+function BankPayDialog({ rec, onClose, by }: { rec: { plan: StaffPayPlan; max: number } | null; onClose: () => void; by: string }) {
+  const { toast } = useToast();
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (rec) { setAmount(''); setNote(''); } }, [rec]);
+  const n = Number(amount) || 0;
+  const over = !!rec && n > rec.max + 0.004;
+  const save = async () => {
+    if (!rec) return;
+    setBusy(true);
+    try {
+      await payFromBank(rec.plan, n, by, note);
+      toast({ title: `${money(n)} paid from the bank`, description: `${rec.plan.personName} · ${rec.plan.label}` });
+      onClose();
+    } catch (e: any) { toast({ variant: 'destructive', title: 'Could not record', description: e?.code === 'permission-denied' ? 'Only payroll admins can record pay.' : e.message }); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={!!rec} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader className="text-left">
+          <DialogTitle>Pay from bank</DialogTitle>
+          <DialogDescription>{rec ? `${rec.plan.personName} · ${rec.plan.label} — ${money(rec.max)} ${rec.plan.kind === 'installment' ? 'still owed' : 'banked'}.` : ''}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label className="text-[12px]">Amount paid ($)</Label>
+            <Input type="number" inputMode="decimal" step="0.01" className="h-10 font-mono" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+            {rec && <button type="button" className="text-[11px] text-brand-red hover:underline" onClick={() => setAmount(String(rec.max))}>Pay it all ({money(rec.max)})</button>}
+            {over && <p className="text-[11px] text-brand-red">That’s more than is owed ({money(rec!.max)}).</p>}
+          </div>
+          <div className="space-y-1.5"><Label className="text-[12px]">Note (optional)</Label>
+            <Input className="h-10" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cash, Zelle 11/14" /></div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={busy || n <= 0 || over}>{busy && <Loader2 size={13} className="mr-1.5 animate-spin" />} Record payout</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

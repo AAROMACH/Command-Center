@@ -705,6 +705,13 @@ service cloud.firestore {
     match /broadcasts/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+      // Anyone it was sent to may mark it read: add only themselves to
+      // acknowledgedBy, nothing else (tech Messages → Announcements).
+      allow update: if isSignedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acknowledgedBy'])
+          && request.resource.data.acknowledgedBy.toSet().difference(resource.data.get('acknowledgedBy', []).toSet())
+               == [request.auth.uid].toSet()
+          && resource.data.get('acknowledgedBy', []).toSet().difference(request.resource.data.acknowledgedBy.toSet()).size() == 0;
     }
 
     // The friendly-ID counter (wlog-001, asmt-001, ...) is incremented by

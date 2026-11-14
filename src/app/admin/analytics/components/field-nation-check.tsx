@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { ISSUE_LABEL, parseFnReport, reconcile, type FnIssue, type FnRow } from '@/lib/fn-reconcile';
 import type { Technician, WeeklyLog, WorkOrder } from '@/lib/types';
 import { saveFnRows } from '@/lib/fn-reports';
+import { learnFromReport, stampActualFees } from '@/lib/fn-fees';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -66,7 +67,16 @@ export function FieldNationCheck() {
         setSaving(true);
         try {
           const n = await saveFnRows(parsed, user?.name || 'Admin', f.name);
-          toast({ title: 'Report saved', description: `${n} work orders added to the pay and hours stats.` });
+          // Fee rates: learn which buyers carry the OAI charge, and put the
+          // actual fee on matched jobs not yet on an approved / paid log.
+          const cfg = await learnFromReport(parsed);
+          const asg = new Set(assignments.map(a => a.id));
+          const fresh = reconcile(parsed, [...pool, ...assignments], logs, people);
+          const stamped = await stampActualFees(fresh.matches, id => (asg.has(id) ? 'assignments' : 'workOrders'));
+          toast({
+            title: 'Report saved',
+            description: `${n} work orders added to the stats. ${cfg.oaiBuyers.length} buyers carry the 0.5% OAI charge${stamped ? `; actual fee set on ${stamped} unpaid job${stamped > 1 ? 's' : ''}` : ''}.`,
+          });
         } catch (e) {
           toast({ variant: 'destructive', title: 'Compared, but not saved', description: e instanceof Error ? e.message : 'Only payroll can save reports.' });
         } finally { setSaving(false); }

@@ -1,5 +1,6 @@
 
 'use client';
+import { loadFnFeeConfig, feeRateForBuyer } from '@/lib/fn-fees';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -291,9 +292,12 @@ export function DispatchPageClient() {
     }
   };
 
-  const handleImportOrders = (newOrders: WorkOrder[]) => {
+  const handleImportOrders = async (newOrders: WorkOrder[]) => {
+    // Each job's Field Nation fee from its buyer (16.35% where the buyer carries
+    // the OAI charge, else 15.85%) — lib/fn-fees.
+    const feeCfg = await loadFnFeeConfig();
     newOrders.forEach(order => {
-        setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), source: 'Imported' })
+        setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), source: 'Imported', fieldNationFeeRate: feeRateForBuyer(order.clientName, feeCfg) })
             .catch(e => console.error("Import error", e));
     });
     toast({ title: "Import complete", description: `${newOrders.length} job${newOrders.length === 1 ? '' : 's'} imported.` });

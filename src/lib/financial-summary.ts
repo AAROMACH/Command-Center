@@ -1,6 +1,6 @@
 import { startOfMonth, endOfMonth, isWithinInterval, differenceInCalendarDays, startOfDay } from 'date-fns';
 import type { Expense, Invoice, WeeklyLog, WorkOrder } from './types';
-import { computeWeeklyLogSettlement, effectiveJobPay, FIELD_NATION_FEE_RATE } from './payroll';
+import { computeWeeklyLogSettlement, effectiveJobPay, jobFeeRate } from './payroll';
 import { parseLocalDate, isArchivedJob } from './jobs';
 import { invoiceNet } from './price-lines';
 
@@ -91,7 +91,7 @@ export function jobEconomics(job: WorkOrder, loggedTechPay: Map<string, number>,
     const techPortion = job.payrollExcluded ? 0
         : loggedTechPay.has(job.id) ? loggedTechPay.get(job.id)!
         : effectiveJobPay({ id: '', workOrderId: job.id, jobPay: pay, isComplete: true, isAdminReviewed: false, outcomeCode: null }, job);
-    const fnFee = imported ? pay * FIELD_NATION_FEE_RATE : 0;
+    const fnFee = imported ? pay * jobFeeRate(job) : 0;
     return {
         job, imported, invoice: paidInvoice,
         revenue: cents(revenue), techPortion: cents(techPortion), fnFee: cents(fnFee),

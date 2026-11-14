@@ -286,13 +286,9 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
-          // A helper (additional technician) may read the jobs they assisted on,
-          // so the job can surface on their own weekly work log.
-          // (plain `uid in field` so Firestore can prove it for an
-          // array-contains query on the helper's job lists)
-          || (isTech() && request.auth.uid in resource.data.additionalTechnicianIds)
-          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
-              || (myCompany() != '' && resource.data.get('clientName', null) == myCompany())))
+          // Helpers and clients don't read the job document — it holds the
+          // lead's pay. They get it from /api/tech/helper-jobs and
+          // /api/client/data with pay, cost and payroll fields removed.
       );
       allow create: if isAdmin();
       // Techs may update their own assignment (status, notes, check-in/out)
@@ -309,7 +305,7 @@ service cloud.firestore {
                   .hasAny(['techId', 'assignedTechnicianId', 'assignedTechIds', 'additionalTechnicianIds',
                             'clientId', 'clientName', 'pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
-                            'source', 'payrollExcluded']))
+                            'source', 'payrollExcluded', 'fieldNationFeeRate']))
           // A helper runs their own workflow (lib/helper-progress): they may
           // write only THEIR helperProgress entry plus a history note —
           // never the job's status, pay, or anyone else's progress.
@@ -330,8 +326,7 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && (resource.data.techId == request.auth.uid
               || resource.data.assignedTechnicianId == request.auth.uid))
-          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
-              || (myCompany() != '' && resource.data.get('clientName', null) == myCompany())))
+          // Clients: /api/client/data (pay removed), not the document.
       );
       allow create: if isAdmin();
       // Same financial-field lockout as assignments (see comment above) —
@@ -345,7 +340,7 @@ service cloud.firestore {
                   .hasAny(['techId', 'assignedTechnicianId', 'assignedTechIds', 'additionalTechnicianIds',
                             'clientId', 'clientName', 'pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
-                            'source', 'payrollExcluded']));
+                            'source', 'payrollExcluded', 'fieldNationFeeRate']));
       allow delete: if isAdmin();
     }
 
@@ -438,8 +433,8 @@ service cloud.firestore {
           isAdmin()
           || isTech()
           || isSales()
-          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
-              || (myCompany() != '' && resource.data.get('client', null) == myCompany())))
+          // Clients read their projects through /api/client/data (part costs
+          // and budgets removed), never the document itself.
       );
       // Sales can hand a won deal to ops — only as an on-hold project tied
       // to the deal, with no crew assigned. Ops activates and staffs it.

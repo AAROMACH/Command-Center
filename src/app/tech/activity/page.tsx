@@ -1,7 +1,7 @@
 'use client';
 import { JobNumbers } from '@/components/work-order-id';
 
-import { fetchHelperJobsRetrying } from '@/lib/tech-assignments';
+import { subscribeHelperJobs } from '@/lib/tech-assignments';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -56,12 +56,8 @@ export default function TechActivityPage() {
       query(collection(db, 'assignments'), where('techId', '==', userId)),
       (snap) => { led = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => isAssignedTo(wo, userId)); publish(); }
     );
-    const unsubHelped = onSnapshot(
-      query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)),
-      (snap) => { helped = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)); publish(); },
-      // Query refused → read helper jobs server-side instead.
-      () => { fetchHelperJobsRetrying().then(j => { helped = j; publish(); }).catch(() => { helped = []; publish(); }); }
-    );
+    // Helper jobs: server copy, pay removed (helpers can't read the lead's job doc).
+    const unsubHelped = subscribeHelperJobs(j => { helped = j; publish(); });
     const unsubAssignments = () => { unsubLed(); unsubHelped(); };
 
     return () => { unsubLogs(); unsubAssignments(); };

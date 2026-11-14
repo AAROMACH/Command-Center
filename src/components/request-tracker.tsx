@@ -7,6 +7,8 @@ import { Check, ChevronDown, ChevronUp, Circle, XCircle } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { buildRequestTrack, type RequestTrack, type TrackerLinks } from '@/lib/request-tracker';
+import { useAuth } from '@/contexts/auth-context';
+import { useClientData } from '@/hooks/use-client-data';
 import type { Invoice, Project, Quote, ServiceRequest, WorkOrder } from '@/lib/types';
 
 /**
@@ -17,6 +19,10 @@ import type { Invoice, Project, Quote, ServiceRequest, WorkOrder } from '@/lib/t
 export function useRequestLinks(req: ServiceRequest | null, company?: string | null): TrackerLinks {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  // Clients (company set) get jobs and projects from the server without pay
+  // and cost fields — they can't read those documents directly.
+  const { user } = useAuth();
+  const clientData = useClientData(company ? user : null);
   const [wo, setWo] = useState<WorkOrder | null>(null);
   const [asmt, setAsmt] = useState<WorkOrder | null>(null);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -31,19 +37,25 @@ export function useRequestLinks(req: ServiceRequest | null, company?: string | n
   const projectId = (req?.conversionType === 'project' && req.convertedId) || quote?.convertedToProjectId || null;
   useEffect(() => {
     if (!projectId || projectId.startsWith('project-')) { setProject(null); return; } // 'project-<time>' = old placeholder ref
+    if (company) { setProject(clientData.projects.find(p => p.id === projectId) || null); return; }
     return onSnapshot(doc(db, 'projects', projectId), s => setProject(s.exists() ? ({ ...s.data(), id: s.id } as Project) : null), () => setProject(null));
-  }, [projectId]);
+  }, [projectId, company, clientData]);
 
   // A job starts in the pool (workOrders) and moves to assignments when a
   // tech is assigned, under a new id that remembers the pool id.
   const woId = req?.conversionType === 'assignment' ? req.convertedId || null : null;
   useEffect(() => {
     if (!woId) { setWo(null); setAsmt(null); return; }
+    if (company) {
+      setWo(clientData.jobs.find(j => j.id === woId) || null);
+      setAsmt(clientData.jobs.find(j => j.workOrderId === woId && j.id !== woId) || null);
+      return;
+    }
     const u1 = onSnapshot(doc(db, 'workOrders', woId), s => setWo(s.exists() ? ({ ...s.data(), id: s.id } as WorkOrder) : null), () => setWo(null));
     const u2 = onSnapshot(query(collection(db, 'assignments'), ...scoped(where('workOrderId', '==', woId))),
       s => setAsmt(s.docs[0] ? ({ ...s.docs[0].data(), id: s.docs[0].id } as WorkOrder) : null), () => setAsmt(null));
     return () => { u1(); u2(); };
-  }, [woId, company]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [woId, company, clientData]); // eslint-disable-line react-hooks/exhaustive-deps
   const job = asmt || wo;
 
   const invField = project ? 'projectId' : job ? 'workOrderId' : null;

@@ -34,6 +34,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, SiteRequest, Invoice, PayrollDispute, Technician } from '@/lib/types';
 import { isAssignedTo } from '@/lib/jobs';
+import { useClientData } from '@/hooks/use-client-data';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
 const PRIORITY_LABEL: Record<AlertType, string> = { critical: 'Needs attention now', warning: 'Needs attention soon', info: 'For your information', success: 'In progress' };
@@ -103,10 +104,7 @@ export function AlertBand() {
       const company = currentUser.clientCompany;
       if (!company) return;
       // Client: only own active projects, new requests, and own invoices
-      unsubs.push(onSnapshot(
-        query(collection(db, 'projects'), where('client', '==', company), where('status', '==', 'active')),
-        (snap) => setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)))
-      ));
+      // Projects come from the shared client data (server, no cost fields) — below.
       unsubs.push(onSnapshot(
         query(collection(db, 'clientRequests'), where('clientName', '==', company), where('status', '==', 'new')),
         (snap) => setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)))
@@ -145,6 +143,13 @@ export function AlertBand() {
 
     return () => unsubs.forEach(u => u());
   }, [currentUser?.id, pathname]);
+
+  // Client portal: active projects from the server copy (clients can't read
+  // project documents directly — they hold costs).
+  const clientData = useClientData(pathname.startsWith('/client') ? currentUser : null);
+  useEffect(() => {
+    if (pathname.startsWith('/client')) setProjects(clientData.projects.filter(p => p.status === 'active'));
+  }, [clientData, pathname]);
 
   const alerts = useMemo(() => {
     if (!currentUser) return [];

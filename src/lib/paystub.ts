@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
+// Type only: the library (~350 KB) loads when a PDF is made, not with the page.
+import type jsPDF from 'jspdf';
 import type { WeeklyLog, WorkOrder, Technician } from './types';
 import { effectiveJobPay, computeWeeklyLogSettlement, weeklyLogReimbursementLines } from './payroll';
 import { displayWorkOrderNumber } from './work-order-identity';
@@ -166,7 +167,8 @@ export async function downloadPaystub(
 ): Promise<void> {
   const data = buildPaystubData(log, tech, techId, jobsById);
   const logoDataUrl = await loadLogoDataUrl();
-  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const { default: JsPDF } = await import('jspdf');
+  const doc = new JsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginX = 50;

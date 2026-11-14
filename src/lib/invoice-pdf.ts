@@ -1,4 +1,5 @@
-import jsPDF from 'jspdf';
+// Type only: the library (~350 KB) loads when a PDF is made, not with the page.
+import type jsPDF from 'jspdf';
 import { depositAmountFor, paymentTermsText } from './quote-deposit';
 import { DEFAULT_ASSUMPTIONS } from './estimating';
 import { discountLineLabel, formatQty, lineUnit } from './price-lines';
@@ -124,7 +125,8 @@ function loadLogo(): Promise<string | null> {
 }
 
 export async function buildInvoicePdf(data: InvoicePdfData, opts: { paymentTerms?: string } = {}): Promise<jsPDF> {
-  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const { default: JsPDF } = await import('jspdf');
+  const doc = new JsPDF({ unit: 'pt', format: 'letter' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 48;

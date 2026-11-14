@@ -3,8 +3,12 @@
 
 import { useClientPlan } from '@/components/client-plan-card';
 import { useState, useEffect, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
-import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
+import dynamic from 'next/dynamic';
+// Charts load after the page (recharts is heavy); same-height placeholder meanwhile.
+const chartLoading = () => <div className="h-[160px] w-full animate-pulse rounded-md bg-bg-tertiary/40" />;
+const RequestsChart = dynamic(() => import('./charts').then(m => m.RequestsChart), { ssr: false, loading: chartLoading });
+const InvoiceChart = dynamic(() => import('./charts').then(m => m.InvoiceChart), { ssr: false, loading: chartLoading });
+const ProgressChart = dynamic(() => import('./charts').then(m => m.ProgressChart), { ssr: false, loading: chartLoading });
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useClientInvoices } from '@/hooks/use-client-invoices';
@@ -38,7 +42,6 @@ import { jobDateTimeValue } from '@/lib/jobs';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const tooltipStyle = { background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 12 };
 
 // Without a plan, requests are held to the standard 48-hour response.
 const DEFAULT_RESPONSE_HOURS = 48;
@@ -237,40 +240,19 @@ export default function ClientDashboardPage() {
                 <div className={chartCard}>
                     <p className={chartTitle}><ClipboardList size={12} /> Requests per month</p>
                     {requestsByMonth.length > 0 ? (
-                        <ChartContainer config={{ count: { label: 'Requests', color: 'var(--brand-red)' } } satisfies ChartConfig} className="aspect-auto h-[160px] w-full">
-                            <BarChart data={requestsByMonth} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                                <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                <Tooltip contentStyle={tooltipStyle} cursor={{ opacity: 0.1 }} />
-                                <Bar dataKey="count" fill="var(--color-count)" radius={[3, 3, 0, 0]} maxBarSize={40} name="Requests" />
-                            </BarChart>
-                        </ChartContainer>
+                        <RequestsChart requestsByMonth={requestsByMonth} />
                     ) : chartEmpty('No requests yet')}
                 </div>
                 <div className={chartCard}>
                     <p className={chartTitle}><Coins size={12} /> Invoice status</p>
                     {invoicePie.length > 0 ? (
-                        <ChartContainer config={{ Paid: { label: 'Paid', color: 'var(--text-green)' }, Pending: { label: 'Pending', color: 'var(--accent-gold)' }, Overdue: { label: 'Overdue', color: 'var(--brand-red)' } } satisfies ChartConfig} className="aspect-auto h-[160px] w-full">
-                            <PieChart>
-                                <Pie data={invoicePie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} strokeWidth={0}>
-                                    {invoicePie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                                </Pie>
-                                <Tooltip contentStyle={tooltipStyle} />
-                            </PieChart>
-                        </ChartContainer>
+                        <InvoiceChart invoicePie={invoicePie} />
                     ) : chartEmpty('No invoices yet')}
                 </div>
                 <div className={chartCard}>
                     <p className={chartTitle}><Activity size={12} /> Project progress</p>
                     {projectProgress.length > 0 ? (
-                        <ChartContainer config={{ pct: { label: 'Complete', color: 'var(--text-green)' } } satisfies ChartConfig} className="aspect-auto h-[160px] w-full">
-                            <BarChart data={projectProgress} layout="vertical" margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
-                                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
-                                <Tooltip contentStyle={tooltipStyle} cursor={{ opacity: 0.1 }} formatter={(v: number) => [`${v}%`, 'Complete']} />
-                                <Bar dataKey="pct" fill="var(--color-pct)" radius={[0, 3, 3, 0]} maxBarSize={24} name="Complete" />
-                            </BarChart>
-                        </ChartContainer>
+                        <ProgressChart projectProgress={projectProgress} />
                     ) : chartEmpty('No projects yet')}
                 </div>
             </div>

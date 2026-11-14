@@ -487,7 +487,12 @@ service cloud.firestore {
       // (calling those functions when auth is null would error on request.auth.uid and deny the request)
       allow create: if (request.auth == null
               && request.resource.data.status == 'pending_review'
-              && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId']))
+              // Public form: no admin or server-managed fields (the email
+              // timestamps gate the confirmation / follow-up emails), and a
+              // sane size so the form can't be used to stuff huge docs.
+              && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId',
+                    'confirmationSentAt', 'followUpSentAt'])
+              && request.resource.data.size() <= 60)
           || (request.auth != null && (
               isAdmin()
               // Signed-in clients create service tickets with status 'new'
@@ -984,9 +989,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Admin-managed config read across portals (skills list, finance rates)
+    // Admin-managed config read across the staff portals (skills list, finance
+    // rates). Not clients: pricing / estimating hold labor rates, material
+    // costs and margins. (The invoice PDF already falls back when a client
+    // can't read them.)
     match /adminConfig/{id} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (isAdmin() || isTech() || isSales() || isSuperAdmin());
       // Pricing and the payroll mileage rate (finance) are billing staff only.
       allow write: if (!(id in ['pricing', 'finance']) && isAdmin()) || (id in ['pricing', 'finance'] && isPayrollAdmin());
     }

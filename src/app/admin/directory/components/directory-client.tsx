@@ -3,6 +3,7 @@ import { useSessionState } from '@/hooks/use-session-state';
 import dynamic from 'next/dynamic';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { isAdmin, isSales, isTech, isClient } from '@/lib/permissions';
+import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -113,6 +114,8 @@ type SortOption = 'name' | 'contacts' | 'role';
 
 export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, assignments, siteRequests, pendingUsers }: DirectoryClientProps) {
     const searchParams = useSearchParams();
+    const { hasPermission: canDo } = useAuth();
+    const canOpenClient = canDo('admin.clients.view');
     const [searchQuery, setSearchQuery] = useSessionState('admin/directory/directory-client:searchQuery', "");
     const [viewMode, setViewMode] = useSessionState<ViewMode>('admin/directory/directory-client:viewMode', 'rows');
     const [sortBy, setSortBy] = useSessionState<SortOption>('admin/directory/directory-client:sortBy', 'name');
@@ -1328,7 +1331,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         )}
                                     </div>
                                 ))}
-                                {selectedClientCompany.contacts[0]?.id && (
+                                {selectedClientCompany.contacts[0]?.id && canOpenClient && (
                                     <Button
                                         size="sm"
                                         variant="outline"

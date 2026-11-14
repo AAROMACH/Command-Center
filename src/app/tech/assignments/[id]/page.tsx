@@ -1,6 +1,7 @@
 'use client';
 import { logDisplayStatus } from '@/lib/weekly-log-core';
 
+import { fetchHelperJob } from '@/lib/tech-assignments';
 import { viewForTech, isHelperOn } from '@/lib/helper-progress';
 import { isLockedLog } from '@/lib/weekly-log-core';
 import { useState, useEffect } from 'react';
@@ -159,7 +160,21 @@ export default function TechAssignmentDetailPage() {
     let unsub: (() => void) | null = null;
 
     (async () => {
-      const aSnap = await getDoc(doc(db, 'assignments', assignmentId));
+      // A helper can't read the lead's job doc (it holds the lead's pay) — the
+      // read is refused; their copy comes from the server, refreshed often so
+      // their own check-in / check-out shows within seconds.
+      const aSnap = await getDoc(doc(db, 'assignments', assignmentId)).catch(() => null);
+      if (!aSnap) {
+        const load = async () => {
+          const j = await fetchHelperJob(assignmentId);
+          if (j) setAssignment(asSeenByMe(j));
+          setLoading(false);
+        };
+        await load();
+        const t = setInterval(load, 10_000);
+        unsub = () => clearInterval(t);
+        return;
+      }
       if (aSnap.exists()) {
         setAssignment(asSeenByMe({ ...aSnap.data(), id: aSnap.id } as WorkOrder));
         setLoading(false);

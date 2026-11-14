@@ -54,6 +54,7 @@ import { SearchField } from '@/components/search-field';
 import { DateRangeButton } from '@/components/list-toolbar';
 import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
+import { subscribeHelperJobs } from '@/lib/tech-assignments';
 import { adjustmentForText } from '@/lib/pay-adjustments';
 import { heldJobs } from '@/lib/pay-holds';
 import { MyStaffPay } from '@/components/staff-pay-panel';
@@ -161,9 +162,8 @@ export default function TechEarningsPage() {
                 setReimbursements(snap.docs.map(d => ({ ...d.data(), id: d.id } as Reimbursement)));
             });
             // Jobs they helped on, so helper lines resolve too.
-            const unsubHelp = onSnapshot(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)), (snap) => {
-                setHelperAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-            }, () => {});
+            // (server copy, pay removed — a helper can't read the lead's job doc)
+            const unsubHelp = subscribeHelperJobs(setHelperAssignments);
             return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubHelp(); unsubPayouts(); unsubReim(); unsubDisputes(); };
         }
     }, []);

@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import {
   addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, updateDoc, where,
 } from 'firebase/firestore';
+import { fetchHelperJob, fetchHelperJobs } from './tech-assignments';
 import { db } from './firebase';
 import type { WorkOrder } from './types';
 import { calculateDistance, getTacticalCoords, getTacticalLocation } from './utils';
@@ -74,9 +75,13 @@ async function liveJob(job: Job): Promise<{ ref: ReturnType<typeof doc>; data: J
   const order = job._src === 'workOrder' ? ['workOrders', 'assignments'] : ['assignments', 'workOrders'];
   for (const c of order) {
     const ref = doc(db, c, job.id);
-    const snap = await getDoc(ref);
-    if (snap.exists()) return { ref, data: { ...(snap.data() as WorkOrder), id: snap.id } };
+    // A helper can't read the lead's job doc (it holds the lead's pay):
+    // the read is refused, so fall through to the server copy below.
+    const snap = await getDoc(ref).catch(() => null);
+    if (snap?.exists()) return { ref, data: { ...(snap.data() as WorkOrder), id: snap.id } };
   }
+  const helped = await fetchHelperJob(job.id);
+  if (helped) return { ref: doc(db, 'assignments', job.id), data: helped };
   throw new TechActionError('This job no longer exists.');
 }
 
@@ -169,12 +174,12 @@ async function assertNotOnLockedLog(techId: string, job: Job) {
 async function onSiteElsewhere(techId: string, jobId: string): Promise<string | null> {
   const [led, helped] = await Promise.all([
     getDocs(query(collection(db, 'assignments'), where('techId', '==', techId), where('status', '==', 'in-progress'))),
-    getDocs(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', techId))),
+    fetchHelperJobs().catch(() => [] as WorkOrder[]),
   ]);
   const lead = led.docs.find(d => d.id !== jobId);
   if (lead) return (lead.data().title as string) || lead.id.toUpperCase();
-  const helper = helped.docs.find(d => d.id !== jobId && helperProgressOf(d.data() as WorkOrder, techId).status === 'in-progress');
-  return helper ? (helper.data().title as string) || helper.id.toUpperCase() : null;
+  const helper = helped.find(j => j.id !== jobId && helperProgressOf(j, techId).status === 'in-progress');
+  return helper ? helper.title || helper.id.toUpperCase() : null;
 }
 
 /**

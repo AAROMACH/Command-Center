@@ -1,4 +1,5 @@
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { fetchHelperJob } from './tech-assignments';
 import { db } from './firebase';
 import { calculateDistance, geocodeAddress } from './utils';
 
@@ -35,7 +36,10 @@ async function roadMiles(points: Point[]): Promise<number[] | null> {
 
 async function jobPoint(assignmentId: string, time: string, title: string, fallback?: { lat?: number | null; lng?: number | null }): Promise<Point | null> {
   let job: Record<string, any> | undefined;
-  try { job = (await getDoc(doc(db, 'assignments', assignmentId))).data(); } catch { /* not readable */ }
+  try { job = (await getDoc(doc(db, 'assignments', assignmentId))).data(); } catch {
+    // Not readable: a job they helped on (the lead's doc) — use the server copy.
+    job = (await fetchHelperJob(assignmentId).catch(() => null)) as Record<string, any> | undefined ?? undefined;
+  }
   const label = title || job?.title || job?.description || assignmentId;
   if (job?.lat != null && job?.lng != null) return { lat: job.lat, lng: job.lng, label, assignmentId, time };
   if (job?.location) {

@@ -25,6 +25,8 @@ import {
   Zap,
   LogOut,
   ChevronDown,
+  Gamepad2,
+  ExternalLink,
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
 import { isAdmin, isTech, isClient } from '@/lib/permissions';
@@ -84,7 +86,12 @@ export function UserNav() {
   // Sales has no profile page of its own (the admin one isn't open to it).
   const showProfile = !pathname.startsWith('/sales');
 
-  const plansPath = pathname.startsWith('/admin') ? '/admin/plans' : 
+  // The Aaromach Arcade is a separate site; the app only links to it. Shown to the tech and
+  // admin portals once NEXT_PUBLIC_ARCADE_URL is set (see apphosting.yaml), hidden otherwise.
+  const arcadeUrl = process.env.NEXT_PUBLIC_ARCADE_URL;
+  const showArcade = !!arcadeUrl && (activePortalId === 'tech' || activePortalId === 'admin');
+
+  const plansPath = pathname.startsWith('/admin') ? '/admin/plans' :
                     pathname.startsWith('/client') ? '/client/financials#plan' : null;
 
   return (
@@ -130,6 +137,15 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
+          {showArcade && (
+          <DropdownMenuItem asChild>
+            <a href={arcadeUrl} target="_blank" rel="noopener noreferrer">
+              <Gamepad2 className="mr-2 h-4 w-4" />
+              <span>Arcade</span>
+              <ExternalLink className="ml-auto h-3.5 w-3.5 text-text-muted" aria-hidden="true" />
+            </a>
+          </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => { void signOutAndClear(); }}>

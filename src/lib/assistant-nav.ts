@@ -16,7 +16,7 @@ export type AssistantPage = {
 export const ASSISTANT_PAGES: AssistantPage[] = [
   // Tech portal
   { path: '/tech/dashboard', title: 'Dashboard', about: "Today's jobs, what's next, quick actions.", highlights: ['Today'] },
-  { path: '/tech/activity', title: 'Activity', about: 'Recent activity on your jobs.' },
+  { path: '/tech/activity', title: 'Insights', about: 'Your performance (pay per hour/day/week, hours worked), job history and pay by month, customer and type.' },
   { path: '/tech/calendar', title: 'Schedule', about: 'Your jobs on a calendar by day/week.' },
   { path: '/tech/assignments', title: 'Assignments', about: 'All jobs assigned to you or where you are a helper. Open a job to check in/out, add notes, photos, and see the team.' },
   { path: '/tech/projects', title: 'Projects', about: 'Multi-day projects you are on, with tasks and parts.' },

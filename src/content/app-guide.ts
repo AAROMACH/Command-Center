@@ -240,6 +240,11 @@ export const APP_GUIDES: Guide[] = [
     ],
   },
   {
+    id: 'my-performance', portal: 'tech', title: 'See my performance (pay per hour, per day/week, hours worked)',
+    keywords: 'performance insights hourly pay per hour per day per week hours worked average wage how am i doing',
+    steps: [{ say: 'Open Insights — My performance is at the top.', path: '/tech/activity' }],
+  },
+  {
     id: 'my-pay', portal: 'tech', title: 'See your pay',
     keywords: 'pay earnings paystub how much paid',
     steps: [{ say: 'Open Earnings — Weekly pay shows each week.', path: '/tech/earnings' }],

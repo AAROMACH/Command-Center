@@ -131,7 +131,7 @@ const techNavGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "tech.dashboard.view" },
-      { href: "/tech/activity",  label: "Activity",  icon: Activity,        permission: "tech.dashboard.view" },
+      { href: "/tech/activity",  label: "Insights",  icon: Activity,        permission: "tech.dashboard.view" },
     ],
   },
   {

@@ -22,6 +22,7 @@ const PayChart = dynamic(() => import('./pay-chart'), { ssr: false, loading: () 
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { PageHeader } from '@/components/page-header';
+import { MyPerformance } from './my-performance';
 import { EmptyState, PageLoading } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { SearchField } from '@/components/search-field';
@@ -158,7 +159,9 @@ export default function TechActivityPage() {
 
   return (
     <div className="space-y-5 text-left">
-      <PageHeader eyebrow="Overview" icon={Activity} title="Activity" subtitle="Your jobs, your pay and your history — filter any way you like." />
+      <PageHeader eyebrow="Overview" icon={Activity} title="Insights" subtitle="Your performance, jobs, pay and history — filter any way you like." />
+
+      <MyPerformance />
 
       {/* Filters */}
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 p-3 bg-bg-secondary border border-border-main rounded-xl shadow-sm">

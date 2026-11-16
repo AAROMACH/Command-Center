@@ -8,7 +8,7 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { isClient } from '@/lib/permissions';
 import { reportingWeekOf } from '@/lib/weekly-log-core';
 import {
-  createStaffPayPlan, payFromBank, recordStaffPayWeek, setStaffPayPaused, summarizePlan, updateStaffPayPlan,
+  createStaffPayPlan, deleteStaffPayEntry, deleteStaffPayPlan, payFromBank, recordStaffPayWeek, setStaffPayPaused, summarizePlan, updateStaffPayEntry, updateStaffPayPlan,
   type PlanSummary, type PlanWeek, type StaffPayEntry, type StaffPayPlan,
 } from '@/lib/staff-pay';
 import type { Technician } from '@/lib/types';
@@ -22,6 +22,14 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+
+/** "Every week" / "Installment of $2,000" / "Balance of $1,200 — they owe us". */
+export function planKindLabel(plan: StaffPayPlan): string {
+  const dir = plan.direction === 'they_owe' ? ' — they owe us' : '';
+  if (plan.kind === 'installment') return `Installment of ${money(plan.total || 0)}${dir}`;
+  if (plan.kind === 'balance') return `Balance of ${money(plan.total || 0)}, paid any amounts${dir}`;
+  return 'Every week';
+}
 
 /** Status chip for one week of a plan. */
 export function WeekChip({ w, current }: { w: PlanWeek; current?: boolean }) {
@@ -37,9 +45,16 @@ export function WeekChip({ w, current }: { w: PlanWeek; current?: boolean }) {
 export function PlanTotals({ plan, s }: { plan: StaffPayPlan; s: PlanSummary }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[12px]">
-      <div><p className="text-text-muted">Each week</p><p className="font-mono font-semibold text-text-primary">{money(plan.weeklyAmount)}</p></div>
-      <div><p className="text-text-muted">Paid so far</p><p className="font-mono font-semibold text-text-green">{money(s.paidTotal)}</p></div>
-      {plan.kind === 'installment' ? (
+      {plan.kind === 'balance'
+        ? <div><p className="text-text-muted">Total</p><p className="font-mono font-semibold text-text-primary">{money(plan.total || 0)}</p></div>
+        : <div><p className="text-text-muted">Each week</p><p className="font-mono font-semibold text-text-primary">{money(plan.weeklyAmount)}</p></div>}
+      <div><p className="text-text-muted">{plan.direction === 'they_owe' ? 'Paid back so far' : 'Paid so far'}</p><p className="font-mono font-semibold text-text-green">{money(s.paidTotal)}</p></div>
+      {plan.kind === 'balance' ? (
+        <>
+          <div><p className="text-text-muted">{plan.direction === 'they_owe' ? 'They still owe' : 'Still owed'}</p><p className={cn('font-mono font-semibold', (s.remaining || 0) > 0 ? 'text-accent-gold' : 'text-text-primary')}>{money(s.remaining || 0)}</p></div>
+          <div><p className="text-text-muted">Payments</p><p className="font-mono font-semibold text-text-primary">{s.bankPayouts.length}</p></div>
+        </>
+      ) : plan.kind === 'installment' ? (
         <>
           {/* The whole unpaid balance is owed; "behind" is just the missed/short weeks within it. */}
           <div><p className="text-text-muted">Still owed (of {money(plan.total || 0)})</p><p className={cn('font-mono font-semibold', (s.remaining || 0) > 0 ? 'text-accent-gold' : 'text-text-primary')}>{money(s.remaining || 0)}</p></div>
@@ -101,6 +116,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<StaffPayPlan | null>(null);
   const [bankPay, setBankPay] = useState<{ plan: StaffPayPlan; max: number } | null>(null);
+  const [editEntry, setEditEntry] = useState<{ plan: StaffPayPlan; entry: StaffPayEntry } | null>(null);
   const [recording, setRecording] = useState<{ plan: StaffPayPlan; week: PlanWeek; banked: number } | null>(null);
 
   useEffect(() => {
@@ -122,7 +138,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-[14px] font-semibold text-text-primary flex items-center gap-2"><PiggyBank size={15} className="text-brand-red" /> Staff pay</p>
-          <p className="text-[12px] text-text-muted">Weekly bonuses and installment payments outside job logs. Tick Paid and Pay out each week; a week paid out unticked (or skipped) is banked as owed. Paused weeks owe nothing.</p>
+          <p className="text-[12px] text-text-muted">Weekly bonuses, installments and balances outside job logs — each payment can be edited or deleted. Tick Paid and Pay out each week; a week paid out unticked (or skipped) is banked as owed. Paused weeks owe nothing.</p>
         </div>
         {canEdit && <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdding(true)}><Plus size={14} className="mr-1.5" /> Add pay plan</Button>}
       </div>
@@ -144,7 +160,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[14px] font-semibold text-text-primary">{plan.personName} · {plan.label}</p>
-                  <p className="text-[12px] text-text-muted">{plan.kind === 'installment' ? `Installment of ${money(plan.total || 0)}` : 'Every week'} · since week of {plan.startWeek}{!plan.active ? ' · paused' : s.done ? ' · paid in full' : ''}</p>
+                  <p className="text-[12px] text-text-muted">{planKindLabel(plan)} · since week of {plan.startWeek}{!plan.active ? ' · paused' : s.done ? ' · paid in full' : ''}</p>
                 </div>
                 {canEdit && (
                   <div className="flex gap-1">
@@ -155,20 +171,33 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
                       toast({ title: plan.active ? 'Paused — nothing is owed while paused' : 'Resumed from this week' });
                     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not update', description: e.message }); }
                   }}>{plan.active ? 'Pause' : 'Resume'}</Button>
+                  <Button size="sm" variant="ghost" className="h-8 text-text-muted hover:text-brand-red" onClick={async () => {
+                    if (!confirm(`Delete "${plan.label}" for ${plan.personName}? This removes the plan and every payment recorded on it. It can't be undone.`)) return;
+                    try { await deleteStaffPayPlan(plan.id); toast({ title: 'Pay plan deleted' }); }
+                    catch (e: any) { toast({ variant: 'destructive', title: 'Could not delete', description: e?.code === 'permission-denied' ? 'Only payroll admins can delete pay plans.' : e.message }); }
+                  }}>Delete</Button>
                   </div>
                 )}
               </div>
               <PlanTotals plan={plan} s={s} />
-              {canEdit && (plan.kind === 'installment' ? (s.remaining || 0) : s.banked) > 0 && (
-                <Button size="sm" variant="outline" className="h-8" onClick={() => setBankPay({ plan, max: plan.kind === 'installment' ? (s.remaining || 0) : s.banked })}>
-                  <PiggyBank size={13} className="mr-1" /> Pay from bank
+              {canEdit && (plan.kind === 'recurring' ? s.banked : (s.remaining || 0)) > 0 && (
+                <Button size="sm" variant={plan.kind === 'balance' ? 'default' : 'outline'} className="h-8" onClick={() => setBankPay({ plan, max: plan.kind === 'recurring' ? s.banked : (s.remaining || 0) })}>
+                  <PiggyBank size={13} className="mr-1" /> {plan.kind === 'balance' ? (plan.direction === 'they_owe' ? 'Record payment received' : 'Record payment') : 'Pay from bank'}
                 </Button>
               )}
               {s.bankPayouts.length > 0 && (
                 <div className="space-y-0.5 text-[12px]">
                   {s.bankPayouts.map(e => (
-                    <p key={e.id} className="text-text-secondary">
-                      <span className="font-mono font-semibold text-text-green">{money(e.paid)}</span> paid from bank · {new Date(e.at).toLocaleDateString()} · {e.by}{e.note ? ` — ${e.note}` : ''}
+                    <p key={e.id} className="text-text-secondary flex flex-wrap items-center gap-x-2">
+                      <span><span className="font-mono font-semibold text-text-green">{money(e.paid)}</span> {plan.kind === 'balance' ? (plan.direction === 'they_owe' ? 'received' : 'paid') : 'paid from bank'} · {new Date(e.at).toLocaleDateString()} · {e.by}{e.note ? ` — ${e.note}` : ''}</span>
+                      {canEdit && <>
+                        <button type="button" className="text-[11px] text-text-muted hover:text-text-primary underline" onClick={() => setEditEntry({ plan, entry: e })}>Edit</button>
+                        <button type="button" className="text-[11px] text-text-muted hover:text-brand-red underline" onClick={async () => {
+                          if (!confirm(`Delete the ${money(e.paid)} payment from ${new Date(e.at).toLocaleDateString()}? It goes back to owed.`)) return;
+                          try { await deleteStaffPayEntry(e.id); toast({ title: 'Payment deleted' }); }
+                          catch (err: any) { toast({ variant: 'destructive', title: 'Could not delete', description: err.message }); }
+                        }}>Delete</button>
+                      </>}
                     </p>
                   ))}
                 </div>
@@ -198,9 +227,9 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
                 </div>
               )}
 
-              <button type="button" className="text-[12px] text-text-muted hover:text-text-primary flex items-center gap-1" onClick={() => setOpen(isOpen ? null : plan.id)}>
+              {plan.kind !== 'balance' && <button type="button" className="text-[12px] text-text-muted hover:text-text-primary flex items-center gap-1" onClick={() => setOpen(isOpen ? null : plan.id)}>
                 {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Week-by-week history
-              </button>
+              </button>}
               {isOpen && (
                 <div className="divide-y divide-border-sub rounded-lg border border-border-sub">
                   {s.weeks.map(w => (
@@ -209,9 +238,14 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
                       <span className="font-mono text-text-muted">due {money(w.scheduled)}</span>
                       <span className="font-mono font-semibold text-text-primary">{w.entry ? `paid ${money(w.entry.paid)}` : '—'}</span>
                       <WeekChip w={w} current={w.weekOf === current} />
-                      {w.entry && canEdit && (
-                        <button type="button" className="text-[11px] text-text-muted hover:text-text-primary underline" onClick={() => setRecording({ plan, week: { ...w, entry: null }, banked: s.banked })}>Change</button>
-                      )}
+                      {w.entry && canEdit && <>
+                        <button type="button" className="text-[11px] text-text-muted hover:text-text-primary underline" onClick={() => setEditEntry({ plan, entry: w.entry! })}>Edit</button>
+                        <button type="button" className="text-[11px] text-text-muted hover:text-brand-red underline" onClick={async () => {
+                          if (!confirm(`Clear the week of ${w.weekOf}? It goes back to not recorded.`)) return;
+                          try { await deleteStaffPayEntry(w.entry!.id); toast({ title: 'Week cleared' }); }
+                          catch (err: any) { toast({ variant: 'destructive', title: 'Could not clear', description: err.message }); }
+                        }}>Clear</button>
+                      </>}
                       {w.entry?.note && <span className="basis-full text-[11px] text-text-muted">{w.entry.note} — {w.entry.by}</span>}
                     </div>
                   ))}
@@ -225,6 +259,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
       <AddPlanDialog open={adding || !!editing} editing={editing} onClose={() => { setAdding(false); setEditing(null); }} people={people} by={by} />
       <RecordPaidDialog rec={recording} onClose={() => setRecording(null)} by={by} />
       <BankPayDialog rec={bankPay} onClose={() => setBankPay(null)} by={by} />
+      <EditEntryDialog rec={editEntry} onClose={() => setEditEntry(null)} by={by} />
     </div>
   );
 }
@@ -233,7 +268,8 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
 function AddPlanDialog({ open, onClose, people, by, editing }: { open: boolean; onClose: () => void; people: Technician[]; by: string; editing?: StaffPayPlan | null }) {
   const { toast } = useToast();
   const [personId, setPersonId] = useState('');
-  const [kind, setKind] = useState<'recurring' | 'installment'>('recurring');
+  const [kind, setKind] = useState<StaffPayPlan['kind']>('recurring');
+  const [direction, setDirection] = useState<'we_owe' | 'they_owe'>('we_owe');
   const [label, setLabel] = useState('');
   const [weekly, setWeekly] = useState('');
   const [total, setTotal] = useState('');
@@ -243,22 +279,25 @@ function AddPlanDialog({ open, onClose, people, by, editing }: { open: boolean; 
   useEffect(() => {
     if (!open) return;
     if (editing) {
-      setPersonId(editing.personId); setKind(editing.kind); setLabel(editing.label);
+      setPersonId(editing.personId); setKind(editing.kind); setLabel(editing.label); setDirection(editing.direction || 'we_owe');
       setWeekly(String(editing.weeklyAmount)); setTotal(editing.total != null ? String(editing.total) : '');
       setStart(editing.startWeek); setNotes(editing.notes || '');
-    } else { setPersonId(''); setKind('recurring'); setLabel(''); setWeekly(''); setTotal(''); setStart(reportingWeekOf()); setNotes(''); }
+    } else { setPersonId(''); setKind('recurring'); setDirection('we_owe'); setLabel(''); setWeekly(''); setTotal(''); setStart(reportingWeekOf()); setNotes(''); }
   }, [open, editing]);
   const person = people.find(p => p.id === personId) || (editing ? ({ id: editing.personId, name: editing.personName } as Technician) : undefined);
   const startIso = (() => { const [m, d, y] = start.split('-'); return y ? `${y}-${m}-${d}` : ''; })();
-  const ok = !!person && !!label.trim() && Number(weekly) > 0 && (kind === 'recurring' || Number(total) > 0);
+  const ok = !!person && !!label.trim() && (kind === 'balance' || Number(weekly) > 0) && (kind === 'recurring' || Number(total) > 0);
   const save = async () => {
     setBusy(true);
     try {
       if (editing) {
-        await updateStaffPayPlan(editing.id, { label: label.trim(), weeklyAmount: Number(weekly), total: kind === 'installment' ? Number(total) : null, startWeek: start, notes: notes.trim() || null });
+        await updateStaffPayPlan(editing.id, {
+          label: label.trim(), weeklyAmount: kind === 'balance' ? 0 : Number(weekly), total: kind !== 'recurring' ? Number(total) : null, startWeek: start, notes: notes.trim() || null,
+          ...(kind !== 'recurring' ? { direction } : {}),
+        });
         toast({ title: 'Pay plan updated', description: 'Weeks already recorded keep their amounts.' });
       } else {
-        await createStaffPayPlan({ personId, personName: person!.name || 'Staff', kind, label: label.trim(), weeklyAmount: Number(weekly), total: kind === 'installment' ? Number(total) : null, startWeek: start, active: true, notes: notes.trim() || null, createdBy: by });
+        await createStaffPayPlan({ personId, personName: person!.name || 'Staff', kind, direction, label: label.trim(), weeklyAmount: kind === 'balance' ? 0 : Number(weekly), total: kind !== 'recurring' ? Number(total) : null, startWeek: start, active: true, notes: notes.trim() || null, createdBy: by });
         toast({ title: 'Pay plan added' });
       }
       setPersonId(''); setLabel(''); setWeekly(''); setTotal('');
@@ -279,14 +318,25 @@ function AddPlanDialog({ open, onClose, people, by, editing }: { open: boolean; 
               <SelectContent className="max-h-[300px]">{people.map(p => <SelectItem key={p.id} value={p.id}>{p.name || p.email}</SelectItem>)}</SelectContent></Select>
           </div>}
           {!editing && <div className="space-y-1.5"><Label className="text-[12px]">Type</Label>
-            <Select value={kind} onValueChange={v => setKind(v as 'recurring' | 'installment')}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="recurring">Every week (e.g. a weekly bonus)</SelectItem><SelectItem value="installment">A total paid over several weeks</SelectItem></SelectContent></Select>
+            <Select value={kind} onValueChange={v => setKind(v as StaffPayPlan['kind'])}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recurring">Every week (e.g. a weekly bonus)</SelectItem>
+                <SelectItem value="installment">A total paid / deducted a set amount each week</SelectItem>
+                <SelectItem value="balance">A balance paid in any amounts, whenever</SelectItem>
+              </SelectContent></Select>
+          </div>}
+          {kind !== 'recurring' && <div className="space-y-1.5"><Label className="text-[12px]">Who owes</Label>
+            <Select value={direction} onValueChange={v => setDirection(v as 'we_owe' | 'they_owe')}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="we_owe">We owe them (we pay it out)</SelectItem>
+                <SelectItem value="they_owe">They owe us (paid back / deducted)</SelectItem>
+              </SelectContent></Select>
           </div>}
           <div className="space-y-1.5"><Label className="text-[12px]">Name</Label>
-            <Input className="h-10" placeholder={kind === 'installment' ? 'App build' : 'Weekly bonus'} value={label} onChange={e => setLabel(e.target.value)} /></div>
+            <Input className="h-10" placeholder={kind === 'installment' ? 'App build' : kind === 'balance' ? 'Tool advance' : 'Weekly bonus'} value={label} onChange={e => setLabel(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-[12px]">Each week ($)</Label><Input type="number" inputMode="decimal" className="h-10 font-mono" value={weekly} onChange={e => setWeekly(e.target.value)} /></div>
-            {kind === 'installment' && <div className="space-y-1.5"><Label className="text-[12px]">Total owed ($)</Label><Input type="number" inputMode="decimal" className="h-10 font-mono" value={total} onChange={e => setTotal(e.target.value)} /></div>}
+            {kind !== 'balance' && <div className="space-y-1.5"><Label className="text-[12px]">Each week ($)</Label><Input type="number" inputMode="decimal" className="h-10 font-mono" value={weekly} onChange={e => setWeekly(e.target.value)} /></div>}
+            {kind !== 'recurring' && <div className="space-y-1.5"><Label className="text-[12px]">Total owed ($)</Label><Input type="number" inputMode="decimal" className="h-10 font-mono" value={total} onChange={e => setTotal(e.target.value)} /></div>}
           </div>
           <div className="space-y-1.5"><Label className="text-[12px]">Starts the week of</Label>
             <Input type="date" className="h-10" value={startIso} onChange={e => { const [y, m, d] = e.target.value.split('-'); if (y) setStart(`${m}-${d}-${y}`); }} />
@@ -371,7 +421,7 @@ export function MyStaffPay({ userId }: { userId: string }) {
           <div key={plan.id} className="rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-3">
             <div>
               <p className="text-[14px] font-semibold text-text-primary">{plan.label}</p>
-              <p className="text-[12px] text-text-muted">{plan.kind === 'installment' ? `${money(plan.total || 0)} paid over weekly checks` : 'Every week'}{s.done ? ' · paid in full' : !plan.active ? ' · paused' : ''}</p>
+              <p className="text-[12px] text-text-muted">{planKindLabel(plan)}{s.done ? ' · paid in full' : !plan.active ? ' · paused' : ''}</p>
             </div>
             <PlanTotals plan={plan} s={s} />
             <div className="divide-y divide-border-sub rounded-lg border border-border-sub">
@@ -404,7 +454,7 @@ function BankPayDialog({ rec, onClose, by }: { rec: { plan: StaffPayPlan; max: n
     setBusy(true);
     try {
       await payFromBank(rec.plan, n, by, note);
-      toast({ title: `${money(n)} paid from the bank`, description: `${rec.plan.personName} · ${rec.plan.label}` });
+      toast({ title: rec.plan.kind === 'balance' ? `${money(n)} recorded` : `${money(n)} paid from the bank`, description: `${rec.plan.personName} · ${rec.plan.label}` });
       onClose();
     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not record', description: e?.code === 'permission-denied' ? 'Only payroll admins can record pay.' : e.message }); }
     finally { setBusy(false); }
@@ -413,8 +463,8 @@ function BankPayDialog({ rec, onClose, by }: { rec: { plan: StaffPayPlan; max: n
     <Dialog open={!!rec} onOpenChange={o => !o && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader className="text-left">
-          <DialogTitle>Pay from bank</DialogTitle>
-          <DialogDescription>{rec ? `${rec.plan.personName} · ${rec.plan.label} — ${money(rec.max)} ${rec.plan.kind === 'installment' ? 'still owed' : 'banked'}.` : ''}</DialogDescription>
+          <DialogTitle>{rec?.plan.kind === 'balance' ? (rec.plan.direction === 'they_owe' ? 'Record payment received' : 'Record payment') : 'Pay from bank'}</DialogTitle>
+          <DialogDescription>{rec ? `${rec.plan.personName} · ${rec.plan.label} — ${money(rec.max)} ${rec.plan.kind === 'recurring' ? 'banked' : rec.plan.direction === 'they_owe' ? 'they still owe' : 'still owed'}.` : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5"><Label className="text-[12px]">Amount paid ($)</Label>
@@ -428,6 +478,51 @@ function BankPayDialog({ rec, onClose, by }: { rec: { plan: StaffPayPlan; max: n
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={save} disabled={busy || n <= 0 || over}>{busy && <Loader2 size={13} className="mr-1.5 animate-spin" />} Record payout</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Change a recorded payment (or a week's paid amount) and its note. */
+function EditEntryDialog({ rec, onClose, by }: { rec: { plan: StaffPayPlan; entry: StaffPayEntry } | null; onClose: () => void; by: string }) {
+  const { toast } = useToast();
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (rec) { setAmount(String(rec.entry.paid ?? 0)); setNote(rec.entry.note || ''); } }, [rec]);
+  if (!rec) return null;
+  const isWeek = rec.entry.kind !== 'bank_payout';
+  const n = Number(amount);
+  const save = async () => {
+    setBusy(true);
+    try {
+      await updateStaffPayEntry(rec.entry, { paid: n, note }, by);
+      toast({ title: 'Payment updated' });
+      onClose();
+    } catch (e: any) { toast({ variant: 'destructive', title: 'Could not save', description: e?.code === 'permission-denied' ? 'Only payroll admins can change pay.' : e.message }); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={!!rec} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader className="text-left">
+          <DialogTitle>Edit payment</DialogTitle>
+          <DialogDescription>
+            {rec.plan.personName} · {rec.plan.label} · {isWeek ? `week of ${rec.entry.weekOf} (${money(rec.entry.scheduled)} due)` : new Date(rec.entry.at).toLocaleDateString()}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label className="text-[12px]">Amount paid ($)</Label>
+            <Input type="number" inputMode="decimal" step="0.01" className="h-10 font-mono" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+            {isWeek && <p className="text-[11px] text-text-muted">$0 marks the week skipped (banked as owed).</p>}
+          </div>
+          <div className="space-y-1.5"><Label className="text-[12px]">Note (optional)</Label>
+            <Input className="h-10" value={note} onChange={e => setNote(e.target.value)} /></div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={busy || !(n >= 0) || amount === ''}>{busy && <Loader2 size={13} className="mr-1.5 animate-spin" />} Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

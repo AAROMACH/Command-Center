@@ -7,8 +7,8 @@ import type { FnRow } from './fn-reconcile';
 
 // Pay and hours from saved Field Nation reports (Insights → Performance).
 //
-// Pay = the tech's take-home share of each job: FN labor minus the platform
-// fee, then the 50% split — the same rule payroll uses (lib/payroll). Extra
+// Pay = the tech's take-home share of each job: FN labor minus the fee FN
+// actually charged on it (from the report), then the 50% split — the same rule payroll uses (lib/payroll). Extra
 // charges (materials, mileage) are reimbursements, not wage, so left out.
 // Date = the job's scheduled date in the app when it's matched, otherwise the
 // date Field Nation approved it (the report has no work date).
@@ -37,7 +37,8 @@ export function perfLines(rows: FnRow[], jobs: WorkOrder[], people: Technician[]
       tech: (techId && nameOf.get(techId)) || r.provider || 'Unknown',
       date: job?.scheduleDate || toIso(r.approved || r.paid),
       hours: r.hours || 0,
-      pay: techShareOfFieldNationLabor(r.labor || 0).techPay,
+      // The fee Field Nation actually took on this job, when the report has it.
+      pay: techShareOfFieldNationLabor(r.labor || 0, r.totalPay > 0 && r.fnFees > 0 ? r.fnFees / r.totalPay : undefined).techPay,
       matched: !!job,
     };
   }).filter(l => l.date);

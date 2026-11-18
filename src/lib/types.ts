@@ -23,6 +23,9 @@ export type AdminMessage = {
   isLocked?: boolean;
   type: 'critical' | 'warning' | 'info' | 'success';
   targetPortal: 'admin' | 'tech' | 'client' | 'all';
+  /** How often the pop-up comes back after "Got it", until it expires
+   *  (components/announcement-banner). Missing = 'once'. */
+  repeat?: 'once' | 'open' | 'hourly' | 'daily';
 };
 
 export type ReliabilityTier = 'Elite' | 'Reliable' | 'Monitored' | 'Restricted' | 'Suspended Review';
@@ -132,6 +135,9 @@ export type WorkOrder = {
   revisitCount?: number;
   leadTechId?: string;
   externalWorkOrderId?: string;
+  /** Field Nation fee rate for this job (e.g. 0.1635 when the buyer carries
+   *  the 0.5% OAI charge). Missing = standard 15.85%. lib/payroll jobFeeRate. */
+  fieldNationFeeRate?: number;
   lat?: number;
   lng?: number;
   geocodedAddress?: string;      // the address string lat/lng were resolved from (refresh when it changes)

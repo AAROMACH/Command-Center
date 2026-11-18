@@ -12,6 +12,8 @@ import type { Technician, WorkOrder } from '@/lib/types';
 const money = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: n >= 1000 ? 0 : 2 }).format(n || 0);
 const hrs = (n: number) => `${(n || 0).toLocaleString('en-US', { maximumFractionDigits: 1 })} h`;
 
+const EXCLUDE_KEY = 'cc:perf:excludedTechs';
+
 const PERIODS = [
   { key: '30', label: 'Last 30 days', days: 30 },
   { key: '90', label: 'Last 90 days', days: 90 },
@@ -48,6 +50,14 @@ export function PerformanceStats() {
   const [people, setPeople] = useState<Technician[]>([]);
   const [period, setPeriod] = useState<PeriodKey>('90');
   const [sort, setSort] = useState<keyof PerfStats>('payPerHour');
+  // Techs left out of the stats (company averages too). Remembered on this device.
+  const [excluded, setExcluded] = useState<string[]>([]);
+  useEffect(() => { try { setExcluded(JSON.parse(localStorage.getItem(EXCLUDE_KEY) || '[]')); } catch { /* storage blocked */ } }, []);
+  const toggleExcluded = (tech: string) => setExcluded(cur => {
+    const next = cur.includes(tech) ? cur.filter(t => t !== tech) : [...cur, tech];
+    try { localStorage.setItem(EXCLUDE_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
+    return next;
+  });
 
   useEffect(() => {
     const u = [
@@ -65,9 +75,9 @@ export function PerformanceStats() {
     const now = new Date();
     const from = p.days > 0 ? new Date(now.getTime() - p.days * 864e5).toISOString().slice(0, 10)
       : p.days === 0 ? `${now.getFullYear()}-01-01` : '';
-    const inPeriod = from ? lines.filter(l => l.date >= from) : lines;
+    const inPeriod = (from ? lines.filter(l => l.date >= from) : lines).filter(l => !excluded.includes(l.tech));
     return { ...perfSummary(inPeriod), from };
-  }, [lines, period]);
+  }, [lines, period, excluded]);
   const sorted = useMemo(() => [...techs].sort((a, b) => (b[sort] as number) - (a[sort] as number)), [techs, sort]);
   const lastUpload = saved.reduce((m, r) => (r.uploadedAt > m ? r.uploadedAt : m), '');
   const unmatched = lines.filter(l => !l.matched && (!from || l.date >= from)).length;
@@ -110,6 +120,7 @@ export function PerformanceStats() {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-[11px]">Tech</TableHead>
+                <TableHead className="text-[11px] w-0" />
                 {COLS.map(c => (
                   <TableHead key={c.key} className="text-[11px] text-right whitespace-nowrap">
                     <button onClick={() => setSort(c.key)} className={cn('hover:text-text-primary', sort === c.key && 'text-accent-gold font-semibold')}>{c.label}</button>
@@ -121,11 +132,25 @@ export function PerformanceStats() {
               {sorted.map(t => (
                 <TableRow key={t.tech}>
                   <TableCell className="text-[12px] whitespace-nowrap">{t.tech}</TableCell>
+                  <TableCell>
+                    <button onClick={() => toggleExcluded(t.tech)} className="text-[11px] text-text-muted hover:text-text-red" title="Leave this tech out of the stats">Exclude</button>
+                  </TableCell>
                   {COLS.map(c => <TableCell key={c.key} className="text-right font-mono text-[12px] whitespace-nowrap">{c.fmt(t[c.key] as number)}</TableCell>)}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+      {excluded.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-text-muted">
+          Excluded:
+          {excluded.map(t => (
+            <button key={t} onClick={() => toggleExcluded(t)} title="Include again"
+              className="rounded-full border border-border-sub px-2 py-0.5 text-text-secondary hover:text-text-primary">
+              {t} ✕
+            </button>
+          ))}
         </div>
       )}
       {unmatched > 0 && (

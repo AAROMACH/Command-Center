@@ -22,7 +22,10 @@ service cloud.firestore {
     // Runs every project from the Tech Portal (no pay, no admin pages).
     function isProjectManager() {
       let d = userData();
-      return d.get('roles', []).hasAny(['project_manager']) || d.get('role', '') == 'project_manager';
+      let r = d.get('role', '').lower();
+      return d.get('roles', []).hasAny(['project_manager']) || r == 'project_manager'
+          // Legacy "Project Manager" (app: normalizeLegacyRole).
+          || (!r.matches('.*(dispatcher|payroll|client|lead|tech|sales).*') && r.matches('.*project.*') && r.matches('.*manager.*'));
     }
 
     // Legacy accounts with only role: 'admin' (no roles array) are treated as
@@ -109,10 +112,27 @@ service cloud.firestore {
           && (!d.keys().hasAny(payKeys()) || isPayrollAdmin());
     }
 
+    // An older account's free-text `role` read the way the app reads it
+    // (lib/permissions normalizeLegacyRole): "Technician", "Lead Tech",
+    // "Senior Technician"… are techs there. These rules used to accept only
+    // the exact values, so such a tech saw their jobs but every check-in /
+    // complete was refused ("Missing or insufficient permissions").
+    // Same order as the app: dispatcher / payroll / client win over tech.
+    function legacyRole() {
+      return userData().get('role', '').lower();
+    }
+    function legacyIsTech() {
+      let r = legacyRole();
+      return r != '' && r != 'admin'
+          && !r.matches('.*(dispatcher|payroll|client).*')
+          && (r.matches('.*(lead|tech).*')
+              || (!r.matches('.*sales.*') && r.matches('.*project.*') && r.matches('.*manager.*')));
+    }
     function isTech() {
       let d = userData();
       return d.get('roles', []).hasAny(['project_lead', 'field_technician', 'project_manager'])
-          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager'];
+          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager']
+          || legacyIsTech();
     }
 
     function isClient() {
@@ -286,13 +306,9 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
-          // A helper (additional technician) may read the jobs they assisted on,
-          // so the job can surface on their own weekly work log.
-          // (plain `uid in field` so Firestore can prove it for an
-          // array-contains query on the helper's job lists)
-          || (isTech() && request.auth.uid in resource.data.additionalTechnicianIds)
-          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
-              || (myCompany() != '' && resource.data.get('clientName', null) == myCompany())))
+          // Helpers and clients don't read the job document — it holds the
+          // lead's pay. They get it from /api/tech/helper-jobs and
+          // /api/client/data with pay, cost and payroll fields removed.
       );
       allow create: if isAdmin();
       // Techs may update their own assignment (status, notes, check-in/out)
@@ -309,7 +325,7 @@ service cloud.firestore {
                   .hasAny(['techId', 'assignedTechnicianId', 'assignedTechIds', 'additionalTechnicianIds',
                             'clientId', 'clientName', 'pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
-                            'source', 'payrollExcluded']))
+                            'source', 'payrollExcluded', 'fieldNationFeeRate']))
           // A helper runs their own workflow (lib/helper-progress): they may
           // write only THEIR helperProgress entry plus a history note —
           // never the job's status, pay, or anyone else's progress.
@@ -330,8 +346,7 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && (resource.data.techId == request.auth.uid
               || resource.data.assignedTechnicianId == request.auth.uid))
-          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
-              || (myCompany() != '' && resource.data.get('clientName', null) == myCompany())))
+          // Clients: /api/client/data (pay removed), not the document.
       );
       allow create: if isAdmin();
       // Same financial-field lockout as assignments (see comment above) —
@@ -345,7 +360,7 @@ service cloud.firestore {
                   .hasAny(['techId', 'assignedTechnicianId', 'assignedTechIds', 'additionalTechnicianIds',
                             'clientId', 'clientName', 'pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
-                            'source', 'payrollExcluded']));
+                            'source', 'payrollExcluded', 'fieldNationFeeRate']));
       allow delete: if isAdmin();
     }
 
@@ -438,8 +453,8 @@ service cloud.firestore {
           isAdmin()
           || isTech()
           || isSales()
-          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
-              || (myCompany() != '' && resource.data.get('client', null) == myCompany())))
+          // Clients read their projects through /api/client/data (part costs
+          // and budgets removed), never the document itself.
       );
       // Sales can hand a won deal to ops — only as an on-hold project tied
       // to the deal, with no crew assigned. Ops activates and staffs it.
@@ -487,7 +502,12 @@ service cloud.firestore {
       // (calling those functions when auth is null would error on request.auth.uid and deny the request)
       allow create: if (request.auth == null
               && request.resource.data.status == 'pending_review'
-              && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId']))
+              // Public form: no admin or server-managed fields (the email
+              // timestamps gate the confirmation / follow-up emails), and a
+              // sane size so the form can't be used to stuff huge docs.
+              && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId',
+                    'confirmationSentAt', 'followUpSentAt'])
+              && request.resource.data.size() <= 60)
           || (request.auth != null && (
               isAdmin()
               // Signed-in clients create service tickets with status 'new'
@@ -700,6 +720,13 @@ service cloud.firestore {
     match /broadcasts/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+      // Anyone it was sent to may mark it read: add only themselves to
+      // acknowledgedBy, nothing else (tech Messages → Announcements).
+      allow update: if isSignedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acknowledgedBy'])
+          && request.resource.data.acknowledgedBy.toSet().difference(resource.data.get('acknowledgedBy', []).toSet())
+               == [request.auth.uid].toSet()
+          && resource.data.get('acknowledgedBy', []).toSet().difference(request.resource.data.acknowledgedBy.toSet()).size() == 0;
     }
 
     // The friendly-ID counter (wlog-001, asmt-001, ...) is incremented by
@@ -984,9 +1011,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Admin-managed config read across portals (skills list, finance rates)
+    // Admin-managed config read across the staff portals (skills list, finance
+    // rates). Not clients: pricing / estimating hold labor rates, material
+    // costs and margins. (The invoice PDF already falls back when a client
+    // can't read them.)
     match /adminConfig/{id} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (isAdmin() || isTech() || isSales() || isSuperAdmin());
       // Pricing and the payroll mileage rate (finance) are billing staff only.
       allow write: if (!(id in ['pricing', 'finance']) && isAdmin()) || (id in ['pricing', 'finance'] && isPayrollAdmin());
     }

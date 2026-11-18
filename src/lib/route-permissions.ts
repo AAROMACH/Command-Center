@@ -26,9 +26,12 @@ const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: Permission }> = [
   { prefix: '/admin/crm',              permission: 'admin.crm.view' },
   { prefix: '/admin/plans',            permission: 'admin.reports.view' },
   { prefix: '/admin/sites',            permission: 'admin.clients.view' },
+  { prefix: '/admin/clients',          permission: 'admin.clients.view' },
+  { prefix: '/admin/map',              permission: 'admin.dispatch.view' },
   { prefix: '/admin/quotes',           permission: 'admin.crm.view' },
   { prefix: '/admin/financials',       permission: 'admin.financials.view' },
   { prefix: '/admin/assets',           permission: 'admin.assignments.view' },
+  { prefix: '/admin/payroll',          permission: 'admin.financials.view' },
   // Sales portal
   { prefix: '/sales',                  permission: 'admin.crm.view' },
   // Tech portal

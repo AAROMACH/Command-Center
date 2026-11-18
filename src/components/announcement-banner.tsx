@@ -20,38 +20,66 @@ const ICON_CLS: Record<AdminMessage["type"], string> = {
   critical: "text-brand-red", warning: "text-accent-gold", info: "text-brand-blue", success: "text-text-green",
 };
 
+// When each announcement was last dismissed: id → epoch ms. localStorage for
+// 'once' / 'hourly' / 'daily'; sessionStorage for 'open' (cleared each time
+// the app is opened fresh).
+type Dismissed = Record<string, number>;
 const dismissKey = (uid: string) => `dismissedAnnouncements:${uid}`;
-function readDismissed(uid: string): string[] {
-  try { return JSON.parse(localStorage.getItem(dismissKey(uid)) || "[]"); } catch { return []; }
+const sessionKey = (uid: string) => `dismissedAnnouncementsSession:${uid}`;
+function readStore(store: Storage, key: string): Dismissed {
+  try {
+    const v = JSON.parse(store.getItem(key) || "{}");
+    // Older format: a plain list of ids, dismissed for good.
+    return Array.isArray(v) ? Object.fromEntries(v.map((id: string) => [id, 0])) : v;
+  } catch { return {}; }
+}
+const REPEAT_MS: Record<string, number> = { hourly: 3600e3, daily: 86400e3 };
+
+/** Should a dismissed announcement show again by now? */
+function isHidden(b: Broadcast, local: Dismissed, session: Dismissed, now: number): boolean {
+  const repeat = b.repeat || "once";
+  if (repeat === "open") return b.id in session;
+  if (!(b.id in local)) return false;
+  if (repeat === "once") return true;
+  return now - local[b.id] < (REPEAT_MS[repeat] ?? Infinity);
 }
 
 /**
  * Office announcements (Messages → New announcement) as a pop-up on every
  * portal page, for the audience they were sent to. Stays up until the person
- * taps "Got it" (remembered on this device), or until it expires / is removed.
+ * taps "Got it", then comes back per the announcement's "Show again" setting
+ * (once / every app open / hourly / daily) until it expires or is removed.
+ * Dismissals are remembered on this device.
  */
 export function AnnouncementBanner({ userId }: { userId: string }) {
   const pathname = usePathname();
   const portal = portalForPath(pathname);
   const [all, setAll] = useState<Broadcast[]>([]);
-  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [local, setLocal] = useState<Dismissed>({});
+  const [session, setSession] = useState<Dismissed>({});
+  const [clock, setClock] = useState(() => Date.now());
   const [index, setIndex] = useState(0);
 
   useEffect(() => onSharedSnapshot("broadcasts", snap => {
     setAll(snap.docs.map(d => ({ ...d.data(), id: d.id } as Broadcast)));
   }), []);
-  useEffect(() => { setDismissed(readDismissed(userId)); }, [userId]);
+  useEffect(() => {
+    setLocal(readStore(localStorage, dismissKey(userId)));
+    setSession(readStore(sessionStorage, sessionKey(userId)));
+  }, [userId]);
+  // Re-check every minute so hourly / daily ones come back without a reload.
+  useEffect(() => { const t = setInterval(() => setClock(Date.now()), 60_000); return () => clearInterval(t); }, []);
 
-  const now = new Date().toISOString();
+  const now = new Date(clock).toISOString();
   const live = useMemo(() => all
     .filter(b => !b.revoked && (!b.expiresAt || b.expiresAt > now))
     // Sales users see office announcements ("admin") — they're staff.
     .filter(b => b.targetPortal === "all" || b.targetPortal === portal || (portal === "sales" && b.targetPortal === "admin"))
-    .filter(b => !dismissed.includes(b.id))
+    .filter(b => !isHidden(b, local, session, clock))
     .sort((a, b) => {
       const rank = { critical: 0, warning: 1, info: 2, success: 3 };
       return rank[a.type] - rank[b.type] || (b.timestamp || "").localeCompare(a.timestamp || "");
-    }), [all, dismissed, portal, now.slice(0, 16)]); // eslint-disable-line react-hooks/exhaustive-deps
+    }), [all, local, session, portal, clock]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (index >= live.length) setIndex(0); }, [live.length, index]);
 
@@ -60,9 +88,17 @@ export function AnnouncementBanner({ userId }: { userId: string }) {
   const { cls, Icon } = STYLE[b.type] || STYLE.info;
 
   const dismiss = () => {
-    const next = [...dismissed, b.id];
-    setDismissed(next);
-    try { localStorage.setItem(dismissKey(userId), JSON.stringify(next.slice(-200))); } catch { /* storage blocked */ }
+    const at = Date.now();
+    if ((b.repeat || "once") === "open") {
+      const next = { ...session, [b.id]: at };
+      setSession(next);
+      try { sessionStorage.setItem(sessionKey(userId), JSON.stringify(next)); } catch { /* storage blocked */ }
+    } else {
+      // Keep the newest 200 so the store doesn't grow forever.
+      const next = Object.fromEntries(Object.entries({ ...local, [b.id]: at }).sort((x, y) => y[1] - x[1]).slice(0, 200));
+      setLocal(next);
+      try { localStorage.setItem(dismissKey(userId), JSON.stringify(next)); } catch { /* storage blocked */ }
+    }
   };
 
   return (

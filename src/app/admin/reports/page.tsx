@@ -1,4 +1,5 @@
 'use client';
+import { AppActivity } from './components/app-activity';
 import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
@@ -1124,7 +1125,7 @@ export default function ActivityAuditPage() {
             <div className="space-y-6 text-left">
                 {/* Hidden on the Archive tab, which has its own search in its
                     FilterBar — one search box per list. */}
-                {activeTab !== 'archive' && (
+                {activeTab !== 'archive' && activeTab !== 'app_activity' && (
                 <SearchField
                         value={searchQuery}
                     onChange={setSearchQuery}
@@ -1135,13 +1136,14 @@ export default function ActivityAuditPage() {
                 {/* The Archive tab ignores the global search (see archiveItems) —
                     only the other tabs fall back to the cross-category search
                     results. */}
-                {(!searchQuery || activeTab === 'archive') ? (
+                {(!searchQuery || activeTab === 'archive' || activeTab === 'app_activity') ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="overflow-x-auto">
                             <TabsList className="tabs mb-6 w-max">
                                 <TabsTrigger value="assignments_history" className="tab">Jobs</TabsTrigger>
                                 <TabsTrigger value="project_history" className="tab">Projects</TabsTrigger>
                                 <TabsTrigger value="weekly_logs" className="tab">Weekly logs</TabsTrigger>
+                                <TabsTrigger value="app_activity" className="tab">App activity</TabsTrigger>
                                 <TabsTrigger value="archive" className="tab">Archive</TabsTrigger>
                             </TabsList>
                         </div>
@@ -1478,7 +1480,11 @@ export default function ActivityAuditPage() {
                             </TabsContent>
 
                             {/* ARCHIVE TAB */}
-                            <TabsContent value="archive" className="m-0 text-left">
+                            <TabsContent value="app_activity" className="m-0">
+                            <AppActivity />
+                        </TabsContent>
+
+                        <TabsContent value="archive" className="m-0 text-left">
                                 <ArchiveTab
                                     items={archiveItems}
                                     technicians={technicians}

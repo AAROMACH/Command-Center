@@ -46,7 +46,7 @@ import {
     Receipt,
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
-import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogPay, effectiveJobPay } from '@/lib/payroll';
+import { FIELD_NATION_FEE_RATE, jobFeeRate, netOfFieldNationFee, computeWeeklyLogPay, effectiveJobPay } from '@/lib/payroll';
 import { DEFAULT_HOLD_REASON, heldJobs, holdJobPay, reholdReleasedJob, releaseHeldJob, undoJobHold } from '@/lib/pay-holds';
 import { DISPUTE_CARDS, PAYROLL_TICKET_CARDS, disputeKindOf, firstName, isLegacyOtherReason, shortWeek, type CardContext } from '@/lib/disputes';
 import { createDocId } from '@/lib/generateId';
@@ -349,7 +349,7 @@ function ImportedJobAudit({
     // the remainder of each. Aaromach keeps a clean 50% of net labor (minus
     // overhead) and no longer absorbs the fee on reimbursements — a $100
     // reimbursement pays the tech netOfFieldNationFee($100) = $84.15.
-    const fnFeeLabor = localPay * FIELD_NATION_FEE_RATE;
+    const fnFeeLabor = localPay * jobFeeRate(wo);
     const fnFeeReimb = localReimb * FIELD_NATION_FEE_RATE;
     const totalFnFee = fnFeeLabor + fnFeeReimb;
     const netLabor = localPay - fnFeeLabor;

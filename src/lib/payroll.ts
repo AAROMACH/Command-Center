@@ -7,8 +7,16 @@ import type { WeeklyLogItem, FinancialRecord, MissingAssignmentReport, PayAdjust
 // here (instead of a scattered 0.1585 magic number) makes the payroll math a
 // single source of truth.
 
-/** Field Nation platform fee rate (15.85%). */
+/** Field Nation platform fee rate (15.85%: 13.9% FN + 1.95% GL). Some
+ *  buyers also carry a 0.5% OAI charge — see lib/fn-fees and jobFeeRate. */
 export const FIELD_NATION_FEE_RATE = 0.1585;
+
+/** The fee rate for one job: its own (stamped at import from the buyer, or
+ *  from a Field Nation report) or the standard 15.85%. */
+export const jobFeeRate = (job: Pick<WorkOrder, 'fieldNationFeeRate'> | null | undefined): number => {
+  const r = job?.fieldNationFeeRate;
+  return typeof r === 'number' && r > 0 && r < 0.5 ? r : FIELD_NATION_FEE_RATE;
+};
 
 // Settle each displayed pay line to cents before adding a weekly total. This
 // keeps the total equal to the amounts shown on job rows and paystubs.
@@ -40,7 +48,7 @@ export function effectiveJobPay(item: WeeklyLogItem, job: WorkOrder | undefined)
     return payCents(Math.max(0, (item.jobPay || 0) * (1 - FIELD_NATION_FEE_RATE) * 0.5)) / 100;
   }
   if (job.source !== 'Imported') return payCents(item.jobPay || 0) / 100;
-  const netLabor = (job.pay || 0) * (1 - FIELD_NATION_FEE_RATE);
+  const netLabor = (job.pay || 0) * (1 - jobFeeRate(job));
   return payCents(Math.max(0, netLabor * 0.5)) / 100;
 }
 
@@ -148,10 +156,10 @@ export function computeWeeklyLogSettlement(log: SettlementLog, jobsById: Map<str
  * FN fee, then half — same split as effectiveJobPay. Keeps the sign, so a
  * negative labor correction gives a negative tech amount.
  */
-export function techShareOfFieldNationLabor(labor: number): { fee: number; net: number; techPay: number } {
+export function techShareOfFieldNationLabor(labor: number, rate: number = FIELD_NATION_FEE_RATE): { fee: number; net: number; techPay: number } {
   const sign = labor < 0 ? -1 : 1;
   const abs = Math.abs(labor);
-  const fee = payCents(abs * FIELD_NATION_FEE_RATE) / 100;
+  const fee = payCents(abs * rate) / 100;
   const net = payCents(abs - fee) / 100;
   const techPay = payCents(net * 0.5) / 100;
   return { fee: sign * fee, net: sign * net, techPay: sign * techPay };

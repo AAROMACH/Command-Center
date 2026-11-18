@@ -1,60 +1,84 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, where, type Query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import type { Project, WorkOrder } from '@/lib/types';
 
 type ClientUser = { id?: string; clientCompany?: string } | null | undefined;
+type ClientData = { jobs: WorkOrder[]; projects: Project[] };
 
 /**
- * Subscribe to several queries and publish the de-duplicated union. Each
- * query must be one the rules can prove safe for a client (filtered on their
- * own clientId or company name) — an unprovable query is rejected whole.
+ * A client's jobs and projects, from /api/client/data — the server removes
+ * pay, cost and payroll fields, which the database can't hide per field, so
+ * clients no longer read job / project documents directly.
+ *
+ * One shared copy for every client screen: fetched on first use, then every
+ * minute and whenever the tab comes back into view.
  */
-function useUnion<T extends { id: string }>(queries: Query[] | null, deps: unknown[]): T[] {
-    const [rows, setRows] = useState<T[]>([]);
-    useEffect(() => {
-        if (!queries || queries.length === 0) { setRows([]); return; }
-        const parts: T[][] = queries.map(() => []);
-        const publish = () => {
-            const m = new Map<string, T>();
-            parts.flat().forEach(r => m.set(r.id, r));
-            setRows([...m.values()]);
-        };
-        const unsubs = queries.map((q, i) => onSnapshot(
-            q,
-            snap => { parts[i] = snap.docs.map(d => ({ ...d.data(), id: d.id } as T)); publish(); },
-            () => { parts[i] = []; publish(); },
-        ));
-        return () => unsubs.forEach(u => u());
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, deps);
-    return rows;
+let data: ClientData = { jobs: [], projects: [] };
+let forUid: string | null = null;
+let inflight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+let timer: ReturnType<typeof setInterval> | null = null;
+
+async function refresh() {
+  if (inflight) return inflight;
+  inflight = (async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const res = await fetch('/api/client/data', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const body = await res.json();
+      data = { jobs: body.jobs || [], projects: body.projects || [] };
+      listeners.forEach(l => l());
+    } catch { /* offline: keep what we have */ } finally { inflight = null; }
+  })();
+  return inflight;
 }
 
-/** A client's projects: linked by clientId, or by company name in `client`. */
+const onFocus = () => { if (document.visibilityState === 'visible') refresh(); };
+
+function subscribe(uid: string, fn: () => void): () => void {
+  if (forUid !== uid) { forUid = uid; data = { jobs: [], projects: [] }; }
+  listeners.add(fn);
+  if (listeners.size === 1) {
+    refresh();
+    timer = setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', onFocus);
+  } else fn();
+  return () => {
+    listeners.delete(fn);
+    if (!listeners.size) {
+      if (timer) clearInterval(timer);
+      timer = null;
+      document.removeEventListener('visibilitychange', onFocus);
+    }
+  };
+}
+
+/** Refetch now (e.g. right after the client creates something). */
+export const refreshClientData = () => refresh();
+
+export function useClientData(user: ClientUser): ClientData {
+  const uid = user?.id;
+  const [snap, setSnap] = useState<ClientData>(() => (uid && forUid === uid ? data : { jobs: [], projects: [] }));
+  useEffect(() => {
+    if (!uid) { setSnap({ jobs: [], projects: [] }); return; }
+    return subscribe(uid, () => setSnap(data));
+  }, [uid]);
+  return snap;
+}
+
+/** A client's projects: linked by clientId, or by company name. */
 export function useClientProjects(user: ClientUser): Project[] {
-    const uid = user?.id;
-    const company = user?.clientCompany;
-    const queries = uid ? [
-        query(collection(db, 'projects'), where('clientId', '==', uid)),
-        ...(company ? [query(collection(db, 'projects'), where('client', '==', company))] : []),
-    ] : null;
-    return useUnion<Project>(queries, [uid, company]);
+  return useClientData(user).projects;
 }
 
 /**
  * A client's jobs across BOTH collections — the open pool (workOrders) and
- * dispatched work (assignments). Client pages used to read only workOrders,
- * so a job vanished from the client's view the moment it was dispatched.
+ * dispatched work (assignments).
  */
 export function useClientJobs(user: ClientUser): WorkOrder[] {
-    const uid = user?.id;
-    const company = user?.clientCompany;
-    const queries = uid ? (['assignments', 'workOrders'] as const).flatMap(c => [
-        query(collection(db, c), where('clientId', '==', uid)),
-        ...(company ? [query(collection(db, c), where('clientName', '==', company))] : []),
-    ]) : null;
-    return useUnion<WorkOrder>(queries, [uid, company]);
+  return useClientData(user).jobs;
 }

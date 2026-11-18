@@ -1,5 +1,5 @@
 import { addWeeks, format, parse, startOfWeek } from 'date-fns';
-import { collection, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { reportingWeekOf } from './weekly-log-core';
 
@@ -8,7 +8,10 @@ import { reportingWeekOf } from './weekly-log-core';
  * weekly job logs, tracked week by week so it can be verified:
  *  - recurring:   a set amount every week (e.g. a weekly bonus);
  *  - installment: a total paid down in weekly amounts (e.g. $2,000 for
- *                 building the app).
+ *                 building the app, or an advance deducted weekly);
+ *  - balance:     a total with no schedule, paid in whatever amounts, whenever
+ *                 ($400 one week, $200 the next, $57 after that).
+ * Installments and balances have a direction: we owe them, or they owe us.
  * Each week payroll records Paid (with the amount actually paid) or Skipped.
  * A skipped (or short) week goes into the plan's bank — owed, not lost — and
  * paying more than scheduled later draws the bank down.
@@ -20,12 +23,14 @@ export type StaffPayPlan = {
   id: string;
   personId: string;
   personName: string;
-  kind: 'recurring' | 'installment';
+  kind: 'recurring' | 'installment' | 'balance';
+  /** Installment / balance: who owes whom. Missing = we owe them. */
+  direction?: 'we_owe' | 'they_owe';
   /** e.g. "Weekly bonus", "App build ($2,000)". */
   label: string;
   /** Scheduled each week. */
   weeklyAmount: number;
-  /** Installment only: the full amount owed. */
+  /** Installment / balance: the full amount owed. */
   total?: number | null;
   /** First week ('MM-dd-yyyy', a Monday). */
   startWeek: string;
@@ -89,7 +94,8 @@ export function summarizePlan(plan: StaffPayPlan, entries: StaffPayEntry[], curr
   const weeks: PlanWeek[] = [];
   const end = toDate(currentWeek);
   let scheduledSoFar = 0;
-  for (let d = toDate(plan.startWeek), i = 0; d <= end && i < 520; d = addWeeks(d, 1), i++) {
+  // A balance has no weekly schedule: only the payments recorded against it.
+  for (let d = toDate(plan.startWeek), i = 0; plan.kind !== 'balance' && d <= end && i < 520; d = addWeeks(d, 1), i++) {
     const weekOf = format(d, 'MM-dd-yyyy');
     // Paused weeks owe nothing (an installment just continues after the pause).
     if (isPausedWeek(plan, weekOf) && !byWeek.has(weekOf)) continue;
@@ -108,7 +114,7 @@ export function summarizePlan(plan: StaffPayPlan, entries: StaffPayEntry[], curr
   const recorded = weeks.filter(w => w.entry);
   const paidTotal = r2(recorded.reduce((s, w) => s + (w.entry!.paid || 0), 0) + bankPaid);
   const banked = r2(Math.max(0, recorded.reduce((s, w) => s + (w.entry!.scheduled - (w.entry!.paid || 0)), 0) - bankPaid));
-  const remaining = plan.kind === 'installment' && plan.total != null ? r2(Math.max(0, plan.total - paidTotal)) : null;
+  const remaining = plan.kind !== 'recurring' && plan.total != null ? r2(Math.max(0, plan.total - paidTotal)) : null;
   return {
     weeks,
     thisWeek: weeks.find(w => w.weekOf === currentWeek) || null,
@@ -122,8 +128,11 @@ export function summarizePlan(plan: StaffPayPlan, entries: StaffPayEntry[], curr
 export async function createStaffPayPlan(p: Omit<StaffPayPlan, 'id' | 'createdAt'>): Promise<string> {
   const ref = doc(collection(db, 'staffPayPlans'));
   const plan: StaffPayPlan = {
-    ...p, id: ref.id, startWeek: mondayOf(toDate(p.startWeek)), weeklyAmount: r2(p.weeklyAmount),
-    total: p.kind === 'installment' ? r2(Number(p.total) || 0) : null, createdAt: new Date().toISOString(),
+    ...p, id: ref.id, startWeek: mondayOf(toDate(p.startWeek)),
+    total: p.kind !== 'recurring' ? r2(Number(p.total) || 0) : null,
+    weeklyAmount: p.kind === 'balance' ? 0 : r2(p.weeklyAmount),
+    direction: p.kind === 'recurring' ? undefined : (p.direction || 'we_owe'),
+    createdAt: new Date().toISOString(),
   };
   await setDoc(ref, JSON.parse(JSON.stringify(plan)));
   return ref.id;
@@ -151,7 +160,7 @@ export async function setStaffPayPaused(plan: StaffPayPlan, paused: boolean): Pr
 }
 
 /** Edit a plan. Weeks already recorded keep what was scheduled/paid then; new amounts apply to weeks not yet recorded. */
-export const updateStaffPayPlan = (id: string, patch: Partial<Pick<StaffPayPlan, 'label' | 'weeklyAmount' | 'total' | 'active' | 'notes' | 'startWeek'>>) =>
+export const updateStaffPayPlan = (id: string, patch: Partial<Pick<StaffPayPlan, 'label' | 'weeklyAmount' | 'total' | 'active' | 'notes' | 'startWeek' | 'direction'>>) =>
   updateDoc(doc(db, 'staffPayPlans', id), JSON.parse(JSON.stringify({
     ...patch,
     ...(patch.startWeek ? { startWeek: mondayOf(toDate(patch.startWeek)) } : {}),
@@ -179,4 +188,31 @@ export async function payFromBank(plan: StaffPayPlan, amount: number, by: string
     scheduled: 0, paid, status: 'paid', kind: 'bank_payout', note: note?.trim() || null, by, at,
   };
   await setDoc(doc(db, 'staffPayEntries', e.id), JSON.parse(JSON.stringify(e)));
+}
+
+/** Change a recorded payment / week: the amount actually paid and the note. */
+export async function updateStaffPayEntry(entry: StaffPayEntry, patch: { paid: number; note?: string | null }, by: string): Promise<void> {
+  const paid = r2(Math.max(0, Number(patch.paid) || 0));
+  await updateDoc(doc(db, 'staffPayEntries', entry.id), JSON.parse(JSON.stringify({
+    paid,
+    // A week edited to $0 reads as skipped (banked); above $0 as paid.
+    ...(entry.kind === 'bank_payout' ? {} : { status: paid > 0 ? 'paid' : 'skipped' }),
+    note: patch.note?.trim() || null,
+    editedBy: by, editedAt: new Date().toISOString(),
+  })));
+}
+
+/** Remove a recorded payment / week. A deleted week goes back to "not recorded". */
+export const deleteStaffPayEntry = (entryId: string) => deleteDoc(doc(db, 'staffPayEntries', entryId));
+
+/** Delete a plan and everything recorded on it. */
+export async function deleteStaffPayPlan(planId: string): Promise<void> {
+  const snap = await getDocs(query(collection(db, 'staffPayEntries'), where('planId', '==', planId)));
+  const ids = snap.docs.map(d => d.id);
+  for (let i = 0; i < ids.length; i += 450) {
+    const batch = writeBatch(db);
+    ids.slice(i, i + 450).forEach(id => batch.delete(doc(db, 'staffPayEntries', id)));
+    await batch.commit();
+  }
+  await deleteDoc(doc(db, 'staffPayPlans', planId));
 }

@@ -1,7 +1,7 @@
 'use client';
 import { JobNumbers } from '@/components/work-order-id';
 
-import { fetchHelperJobsRetrying } from '@/lib/tech-assignments';
+import { subscribeHelperJobs } from '@/lib/tech-assignments';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -9,18 +9,20 @@ import type { WeeklyLog, WorkOrder } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { Activity, AlertTriangle, ArrowDown, ArrowUp, Filter, RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import { isAssignedTo } from '@/lib/jobs';
 import { median } from '@/lib/customer-intel';
 import { statusTone, TONE_TEXT } from '@/lib/status-styles';
 import { buildTechJobRows, PAY_STATUS_LABELS, type PayStatus, type TechJobRow } from '@/lib/tech-intel';
-import { HBars, Tip } from '@/app/admin/analytics/components/customer-dashboard';
+import { HBars } from '@/components/chart-bits';
+import dynamic from 'next/dynamic';
+// recharts is heavy: the chart loads after the page, same-height placeholder meanwhile.
+const PayChart = dynamic(() => import('./pay-chart'), { ssr: false, loading: () => <div className="h-[260px] w-full animate-pulse rounded-md bg-bg-tertiary/40" /> });
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { PageHeader } from '@/components/page-header';
+import { MyPerformance } from './my-performance';
 import { EmptyState, PageLoading } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { SearchField } from '@/components/search-field';
@@ -55,12 +57,8 @@ export default function TechActivityPage() {
       query(collection(db, 'assignments'), where('techId', '==', userId)),
       (snap) => { led = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => isAssignedTo(wo, userId)); publish(); }
     );
-    const unsubHelped = onSnapshot(
-      query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)),
-      (snap) => { helped = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)); publish(); },
-      // Query refused → read helper jobs server-side instead.
-      () => { fetchHelperJobsRetrying().then(j => { helped = j; publish(); }).catch(() => { helped = []; publish(); }); }
-    );
+    // Helper jobs: server copy, pay removed (helpers can't read the lead's job doc).
+    const unsubHelped = subscribeHelperJobs(j => { helped = j; publish(); });
     const unsubAssignments = () => { unsubLed(); unsubHelped(); };
 
     return () => { unsubLogs(); unsubAssignments(); };
@@ -161,7 +159,9 @@ export default function TechActivityPage() {
 
   return (
     <div className="space-y-5 text-left">
-      <PageHeader eyebrow="Overview" icon={Activity} title="Activity" subtitle="Your jobs, your pay and your history — filter any way you like." />
+      <PageHeader eyebrow="Overview" icon={Activity} title="Insights" subtitle="Your performance, jobs, pay and history — filter any way you like." />
+
+      <MyPerformance />
 
       {/* Filters */}
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 p-3 bg-bg-secondary border border-border-main rounded-xl shadow-sm">
@@ -245,19 +245,7 @@ export default function TechActivityPage() {
             </CardHeader>
             <CardContent>
               {monthly.length === 0 ? <EmptyState compact title="No completed jobs in this view" /> : (
-                <ChartContainer config={{ approved: { label: 'Approved', color: 'var(--text-green)' }, pending: { label: 'Pending', color: 'var(--accent-gold)' } } satisfies ChartConfig} className="w-full h-[260px]">
-                  <BarChart data={monthly} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={monthLabel} minTickGap={8} />
-                    <YAxis tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={v => `$${v}`} width={48} />
-                    <Tooltip cursor={{ opacity: 0.1 }} content={({ payload }) => {
-                      const d = payload?.[0]?.payload as { month: string; approved: number; pending: number } | undefined;
-                      return d ? <Tip title={monthLabel(d.month)} lines={[`${money(d.approved)} approved`, `${money(d.pending)} pending`]} /> : null;
-                    }} />
-                    <Bar dataKey="approved" stackId="p" fill="var(--color-approved)" />
-                    <Bar dataKey="pending" stackId="p" fill="var(--color-pending)" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
+                <PayChart monthly={monthly} />
               )}
             </CardContent>
           </Card>

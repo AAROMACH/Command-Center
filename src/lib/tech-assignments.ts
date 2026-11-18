@@ -17,6 +17,16 @@ export async function fetchHelperJobs(): Promise<WorkOrder[]> {
   return ((await res.json()).jobs || []) as WorkOrder[];
 }
 
+/** One job the signed-in tech helps on, from the server (pay removed); null if not theirs. */
+export async function fetchHelperJob(id: string): Promise<WorkOrder | null> {
+  await auth.authStateReady();
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) return null;
+  const res = await fetch(`/api/tech/helper-jobs?id=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  return ((await res.json()).job || null) as WorkOrder | null;
+}
+
 /** fetchHelperJobs with a few quick retries (2s, 4s, 8s, 16s) for one-off callers. */
 export async function fetchHelperJobsRetrying(isStopped: () => boolean = () => false): Promise<WorkOrder[]> {
   let delay = 2_000;
@@ -37,6 +47,21 @@ export async function fetchHelperJobsRetrying(isStopped: () => boolean = () => f
  * and trip — see lib/helper-progress), so every list, card and action button
  * works for them unchanged. Returns the unsubscribe.
  */
+/**
+ * Helper jobs for screens that used to listen to them live: the server copy
+ * (pay removed), now, every minute and when the app comes back into view.
+ * Returns an unsubscribe.
+ */
+export function subscribeHelperJobs(onJobs: (jobs: WorkOrder[]) => void): () => void {
+  let stopped = false;
+  const load = () => fetchHelperJobsRetrying(() => stopped).then(j => { if (!stopped) onJobs(j); }).catch(() => { /* keep last */ });
+  load();
+  const timer = setInterval(load, 60_000);
+  const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+  document.addEventListener('visibilitychange', onVisible);
+  return () => { stopped = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+}
+
 export function subscribeTechAssignments(
   techId: string,
   onJobs: (jobs: WorkOrder[]) => void,
@@ -58,9 +83,8 @@ export function subscribeTechAssignments(
     ledLoaded = true;
     publish();
   }, () => { ledLoaded = true; publish(); onError?.(); });
-  // Helper jobs: a live query when Firestore allows it, plus the server
-  // endpoint (always works) on load, every minute, and when the app regains
-  // focus — so a helper's jobs never silently go missing.
+  // Helper jobs: from the server endpoint (pay removed) on load, every
+  // minute, and when the app regains focus.
   let live: WorkOrder[] = [];
   let fetched: WorkOrder[] = [];
   const mergeHelped = () => {
@@ -69,15 +93,9 @@ export function subscribeTechAssignments(
     helped = [...m.values()];
     publish();
   };
-  const u2 = onSnapshot(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', techId)), snap => {
-    live = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
-    mergeHelped();
-  }, (err) => {
-    console.warn('[tech-assignments] live helper-job query refused; using server fetch', err?.code || err);
-    live = [];
-    mergeHelped();
-    refetch(); // the server copy is now the only source — get it right away
-  });
+  // Helpers can't read the lead's job document (it holds the lead's pay), so
+  // helper jobs come only from the server copy, pay removed.
+  const u2 = () => {};
   let stopped = false;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let retryDelay = 2_000;

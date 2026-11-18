@@ -19,10 +19,15 @@ service firebase.storage {
           || d.get('role', '') in ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin'];
     }
 
+    // Older accounts' free-text role read like the app does (see firestore.rules legacyIsTech).
     function isTech() {
       let d = userData();
+      let r = d.get('role', '').lower();
       return d.get('roles', []).hasAny(['project_lead', 'field_technician', 'project_manager'])
-          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager'];
+          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager']
+          || (r != '' && r != 'admin' && !r.matches('.*(dispatcher|payroll|client).*')
+              && (r.matches('.*(lead|tech).*')
+                  || (!r.matches('.*sales.*') && r.matches('.*project.*') && r.matches('.*manager.*'))));
     }
 
     function isClient() {

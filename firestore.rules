@@ -22,7 +22,10 @@ service cloud.firestore {
     // Runs every project from the Tech Portal (no pay, no admin pages).
     function isProjectManager() {
       let d = userData();
-      return d.get('roles', []).hasAny(['project_manager']) || d.get('role', '') == 'project_manager';
+      let r = d.get('role', '').lower();
+      return d.get('roles', []).hasAny(['project_manager']) || r == 'project_manager'
+          // Legacy "Project Manager" (app: normalizeLegacyRole).
+          || (!r.matches('.*(dispatcher|payroll|client|lead|tech|sales).*') && r.matches('.*project.*') && r.matches('.*manager.*'));
     }
 
     // Legacy accounts with only role: 'admin' (no roles array) are treated as
@@ -109,10 +112,27 @@ service cloud.firestore {
           && (!d.keys().hasAny(payKeys()) || isPayrollAdmin());
     }
 
+    // An older account's free-text `role` read the way the app reads it
+    // (lib/permissions normalizeLegacyRole): "Technician", "Lead Tech",
+    // "Senior Technician"… are techs there. These rules used to accept only
+    // the exact values, so such a tech saw their jobs but every check-in /
+    // complete was refused ("Missing or insufficient permissions").
+    // Same order as the app: dispatcher / payroll / client win over tech.
+    function legacyRole() {
+      return userData().get('role', '').lower();
+    }
+    function legacyIsTech() {
+      let r = legacyRole();
+      return r != '' && r != 'admin'
+          && !r.matches('.*(dispatcher|payroll|client).*')
+          && (r.matches('.*(lead|tech).*')
+              || (!r.matches('.*sales.*') && r.matches('.*project.*') && r.matches('.*manager.*')));
+    }
     function isTech() {
       let d = userData();
       return d.get('roles', []).hasAny(['project_lead', 'field_technician', 'project_manager'])
-          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager'];
+          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager']
+          || legacyIsTech();
     }
 
     function isClient() {

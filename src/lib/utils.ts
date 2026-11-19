@@ -135,40 +135,64 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
 
+// ── Location for job actions (check-in, complete, trips) ─────────────────
+// One shared GPS fix: a reading from the last minute is reused, and calls made
+// at the same time share one request — check-in used to wait for a fresh fix
+// (up to 5 s), and complete waited for a SECOND one to close the trip.
+const FIX_MAX_AGE_MS = 60_000;
+let lastFix: { lat: number; lng: number; at: number } | null = null;
+let pendingFix: Promise<{ lat: number; lng: number } | null> | null = null;
+
+function currentFix(): Promise<{ lat: number; lng: number } | null> {
+  if (typeof window === 'undefined' || !navigator.geolocation) return Promise.resolve(null);
+  if (lastFix && Date.now() - lastFix.at < FIX_MAX_AGE_MS) return Promise.resolve({ lat: lastFix.lat, lng: lastFix.lng });
+  if (pendingFix) return pendingFix;
+  pendingFix = new Promise<{ lat: number; lng: number } | null>(resolve => {
+    // Hard stop: the browser's own timeout doesn't start until a permission
+    // prompt is answered.
+    const guard = setTimeout(() => resolve(null), 6_000);
+    navigator.geolocation.getCurrentPosition(
+      pos => { clearTimeout(guard); lastFix = { lat: pos.coords.latitude, lng: pos.coords.longitude, at: Date.now() }; resolve({ lat: lastFix.lat, lng: lastFix.lng }); },
+      () => { clearTimeout(guard); resolve(null); },
+      { timeout: 4_000, maximumAge: FIX_MAX_AGE_MS, enableHighAccuracy: false },
+    );
+  }).finally(() => { pendingFix = null; });
+  return pendingFix;
+}
+
+// City names by ~100 m grid, so the same site isn't looked up twice.
+const placeCache = new Map<string, string>();
+const GEOCODE_CAP_MS = 2_000;
+
 /**
  * Operative Location Retrieval.
  * Returns verified city location or raw coords if geocoding is restricted.
+ * The city lookup is capped at 2 s — a slow Maps response no longer holds
+ * up check-in; it falls back to the coordinates.
  */
 export async function getTacticalLocation(): Promise<string> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      resolve("GPS Unavailable");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        resolve(city);
-      },
-      () => resolve("GPS Restricted"),
-      { timeout: 5000 }
-    );
-  });
+  if (typeof window === 'undefined' || !navigator.geolocation) return "GPS Unavailable";
+  const fix = await currentFix();
+  if (!fix) return "GPS Restricted";
+  const key = `${fix.lat.toFixed(3)},${fix.lng.toFixed(3)}`;
+  const cached = placeCache.get(key);
+  if (cached) return cached;
+  const fallback = `${fix.lat.toFixed(4)}, ${fix.lng.toFixed(4)}`;
+  const place = await Promise.race([
+    reverseGeocode(fix.lat, fix.lng),
+    new Promise<string>(r => setTimeout(() => r(fallback), GEOCODE_CAP_MS)),
+  ]);
+  if (place !== fallback) placeCache.set(key, place);
+  return place;
 }
 
 /**
  * Current GPS coordinates, or null if unavailable/denied. Complements
  * getTacticalLocation (which returns a human-readable city) for mileage math.
+ * Shares the same recent fix.
  */
 export async function getTacticalCoords(): Promise<{ lat: number; lng: number } | null> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !navigator.geolocation) { resolve(null); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
-      { timeout: 5000 },
-    );
-  });
+  return currentFix();
 }
 
 /**

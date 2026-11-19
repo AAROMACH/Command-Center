@@ -1,9 +1,9 @@
 import { buildDailyRoute } from './daily-route';
 import { format } from 'date-fns';
 import {
-  addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, updateDoc, where,
+  arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where,
 } from 'firebase/firestore';
-import { fetchHelperJob, fetchHelperJobs } from './tech-assignments';
+import { fetchHelperJob, recentHelperJobs } from './tech-assignments';
 import { db } from './firebase';
 import type { WorkOrder } from './types';
 import { calculateDistance, getTacticalCoords, getTacticalLocation } from './utils';
@@ -123,7 +123,11 @@ async function createTrip(job: Job, ctx: TechActionContext, location: string, ki
   try {
     const coords = kind === 'start_trip' ? await getTacticalCoords() : null;
     const now = new Date();
-    const ref = await addDoc(collection(db, 'tripLogs'), {
+    // The id is made on the phone, so the job can point at the trip at once;
+    // the trip write itself finishes in the background (it's a side record —
+    // the check-in shouldn't wait on it over a weak signal).
+    const ref = doc(collection(db, 'tripLogs'));
+    setDoc(ref, {
       technicianId: ctx.techId,
       technicianName: ctx.techName,
       assignmentId: job.id,
@@ -145,7 +149,7 @@ async function createTrip(job: Job, ctx: TechActionContext, location: string, ki
       ...(kind === 'start_trip' ? { startTime: format(now, 'h:mm a') } : { arrivedAt: format(now, 'h:mm a'), arrivalLocation: location }),
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-    });
+    }).catch(e => console.error('trip record failed', e));
     return ref.id;
   } catch (e) {
     console.error('trip record failed', e);
@@ -174,7 +178,7 @@ async function assertNotOnLockedLog(techId: string, job: Job) {
 async function onSiteElsewhere(techId: string, jobId: string): Promise<string | null> {
   const [led, helped] = await Promise.all([
     getDocs(query(collection(db, 'assignments'), where('techId', '==', techId), where('status', '==', 'in-progress'))),
-    fetchHelperJobs().catch(() => [] as WorkOrder[]),
+    recentHelperJobs(),
   ]);
   const lead = led.docs.find(d => d.id !== jobId);
   if (lead) return (lead.data().title as string) || lead.id.toUpperCase();
@@ -186,7 +190,10 @@ async function onSiteElsewhere(techId: string, jobId: string): Promise<string | 
  * A helper's action: same steps and rules as the lead, applied to their own
  * helperProgress entry. The job's status and the lead's trip are untouched.
  */
-async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, action: TechJobAction, ctx: TechActionContext): Promise<TechActionResult> {
+async function performHelperAction(
+  ref: ReturnType<typeof doc>, live: Job, action: TechJobAction, ctx: TechActionContext,
+  started: { locationP: Promise<string>; elsewhereP: Promise<string | null> },
+): Promise<TechActionResult> {
   const me = ctx.techId;
   const view = helperView(live, me);
   const allowed: Record<TechJobAction, boolean> = {
@@ -204,7 +211,7 @@ async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, actio
 
   const now = format(new Date(), 'h:mm a');
   const iso = new Date().toISOString();
-  const location = await getTacticalLocation();
+  const location = await started.locationP;
   const user = `${ctx.techName} (helper)`;
   const current = helperProgressOf(live, me);
   const tripId = current.activeTripLogId || null;
@@ -227,13 +234,12 @@ async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, actio
     }
 
     case 'checkIn': {
-      const other = await onSiteElsewhere(me, live.id);
+      const other = await started.elsewhereP;
       if (other) throw new TechActionError(`You're still checked in at ${other}. Check out or complete it first.`);
       let activeTrip = tripId;
       if (activeTrip) {
-        try {
-          await updateDoc(doc(db, 'tripLogs', activeTrip), { arrivedAt: now, arrivalLocation: location, updatedAt: iso });
-        } catch (e) { console.error('check-in trip update failed', e); }
+        updateDoc(doc(db, 'tripLogs', activeTrip), { arrivedAt: now, arrivalLocation: location, updatedAt: iso })
+          .catch(e => console.error('check-in trip update failed', e));
       } else {
         activeTrip = await createTrip(live, ctx, location, 'check_in');
       }
@@ -244,12 +250,12 @@ async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, actio
     }
 
     case 'checkOut':
-      await finalizeOpenTrip(tripId, location);
+      void finalizeOpenTrip(tripId, location); // background — doesn't hold up the helper's action
       await write({ status: 'checked-out', activeTripLogId: null, checkOutAt: iso }, `Helper checked out at ${now}. Location: [${location}].`);
       return { title: 'Checked Out', description: 'Time on site and trip mileage recorded.' };
 
     case 'complete': {
-      await finalizeOpenTrip(tripId, location);
+      void finalizeOpenTrip(tripId, location);
       // Re-completing must not stack a second helper entry in an open Draft.
       await removeJobFromDraftLogs(me, live.id).catch(() => {});
       await write({ status: 'completed', activeTripLogId: null, completedAt: iso }, `Helper finished at ${now}. Location: [${location}].`);
@@ -287,8 +293,14 @@ export async function performTechJobAction(job: Job, action: TechJobAction, ctx:
 }
 
 async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechActionContext): Promise<TechActionResult> {
+  // Start the slow parts together instead of one after another: the GPS fix /
+  // place name and (for check-in) the "on site elsewhere" check run while the
+  // job is read.
+  const locationP = getTacticalLocation();
+  const elsewhereP = action === 'checkIn' ? onSiteElsewhere(ctx.techId, job.id) : Promise.resolve(null);
+  locationP.catch(() => {}); elsewhereP.catch(() => {});
   const { ref, data: live } = await liveJob(job);
-  if (isHelperOn(live, ctx.techId)) return performHelperAction(ref, live, action, ctx);
+  if (isHelperOn(live, ctx.techId)) return performHelperAction(ref, live, action, ctx, { locationP, elsewhereP });
   const allowed: Record<TechJobAction, boolean> = {
     confirm: canConfirm(live),
     startTrip: canStartTrip(live),
@@ -302,7 +314,7 @@ async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechAction
   }
 
   const now = format(new Date(), 'h:mm a');
-  const location = await getTacticalLocation();
+  const location = await locationP;
   const user = ctx.techName;
   const tripId = (live as Job).activeTripLogId || null;
 
@@ -328,13 +340,12 @@ async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechAction
 
     case 'checkIn': {
       // One job on site at a time — helper jobs count too.
-      const other = await onSiteElsewhere(ctx.techId, live.id);
+      const other = await elsewhereP;
       if (other) throw new TechActionError(`You're still checked in at ${other}. Check out or complete it first.`);
       let activeTrip = tripId;
       if (activeTrip) {
-        try {
-          await updateDoc(doc(db, 'tripLogs', activeTrip), { arrivedAt: now, arrivalLocation: location, updatedAt: new Date().toISOString() });
-        } catch (e) { console.error('check-in trip update failed', e); }
+        updateDoc(doc(db, 'tripLogs', activeTrip), { arrivedAt: now, arrivalLocation: location, updatedAt: new Date().toISOString() })
+          .catch(e => console.error('check-in trip update failed', e));
       } else {
         // No trip (Field Nation jobs skip Start Trip): still record arrival so
         // time on site is tracked.
@@ -353,7 +364,8 @@ async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechAction
     }
 
     case 'checkOut':
-      await finalizeOpenTrip(tripId, location);
+      // Closing the trip (end GPS, miles) finishes in the background.
+      void finalizeOpenTrip(tripId, location);
       await updateDoc(ref, {
         status: 'checked-out',
         activeTripLogId: null,
@@ -362,8 +374,9 @@ async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechAction
       return { title: 'Checked Out', description: 'Time on site and trip mileage recorded.' };
 
     case 'complete': {
-      // Completing without an explicit check-out still closes the trip.
-      await finalizeOpenTrip(tripId, location);
+      // Completing without an explicit check-out still closes the trip
+      // (in the background — it doesn't hold up the completion).
+      void finalizeOpenTrip(tripId, location);
       const completion = await ctx.completeAndFile(live, () => updateDoc(ref, {
         status: 'completed',
         activeTripLogId: null,

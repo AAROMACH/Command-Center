@@ -14,7 +14,22 @@ export async function fetchHelperJobs(): Promise<WorkOrder[]> {
   if (!token) throw new Error('helper-jobs: not signed in yet');
   const res = await fetch('/api/tech/helper-jobs', { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`helper-jobs ${res.status}`);
-  return ((await res.json()).jobs || []) as WorkOrder[];
+  const jobs = ((await res.json()).jobs || []) as WorkOrder[];
+  lastHelperJobs = { at: Date.now(), jobs };
+  return jobs;
+}
+
+// The last helper-job list fetched on this device (the job screens refresh it
+// every minute), so check-in doesn't wait on another server round trip.
+let lastHelperJobs: { at: number; jobs: WorkOrder[] } | null = null;
+
+/** Helper jobs for a quick check: the recent copy (≤ 2 min), else a fetch capped at 3 s. */
+export async function recentHelperJobs(): Promise<WorkOrder[]> {
+  if (lastHelperJobs && Date.now() - lastHelperJobs.at < 120_000) return lastHelperJobs.jobs;
+  return Promise.race([
+    fetchHelperJobs().catch(() => lastHelperJobs?.jobs || []),
+    new Promise<WorkOrder[]>(r => setTimeout(() => r(lastHelperJobs?.jobs || []), 3_000)),
+  ]);
 }
 
 /** One job the signed-in tech helps on, from the server (pay removed); null if not theirs. */

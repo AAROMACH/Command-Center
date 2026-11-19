@@ -9,8 +9,9 @@ service firebase.storage {
     // Mirror firestore.rules: read the user doc once and resolve roles from the
     // typed roles[] array OR the legacy `role` string, with a safe default so a
     // missing roles field never errors the check (which read as "unauthorized").
+    // {} for a guest, so role checks return false instead of erroring (see firestore.rules).
     function userData() {
-      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+      return request.auth == null ? {} : firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
     }
 
     function isAdmin() {

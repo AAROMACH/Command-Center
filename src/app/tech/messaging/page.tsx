@@ -417,7 +417,7 @@ export default function TechMessagingPage() {
                         )}>
                           {msg.body && <p className="text-[13px] leading-relaxed">{msg.body}</p>}
                           {msg.imageUrls?.map((url, i) => (
-                            <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
+                            <img loading="lazy" decoding="async" key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                           ))}
                           <p className={cn('text-[10px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
                             {msg.timestamp || msg.createdAt ? format(parseISO(msg.timestamp || msg.createdAt!), 'MMM d, h:mm a') : ''}
@@ -532,7 +532,7 @@ export default function TechMessagingPage() {
                             )}>
                               {msg.body && <p className="text-[13px] leading-relaxed">{msg.body}</p>}
                               {msg.imageUrls?.map((url, i) => (
-                                <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
+                                <img loading="lazy" decoding="async" key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                               ))}
                               <p className={cn('text-[10px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
                                 {msg.timestamp || msg.createdAt ? format(parseISO(msg.timestamp || msg.createdAt!), 'MMM d, h:mm a') : ''}

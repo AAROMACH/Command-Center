@@ -312,6 +312,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                   <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                       <Input 
+                        type="tel"
+                        inputMode="tel"
                         placeholder="Phone Number" 
                         value={formData.onsiteContactPhone}
                         onChange={e => setFormData({...formData, onsiteContactPhone: e.target.value})}

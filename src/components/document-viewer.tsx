@@ -26,7 +26,7 @@ export function DocumentViewer({ doc, onOpenChange }: { doc: ViewableDoc | null;
   if (doc && url) {
     if (isImageDoc(doc)) {
       // eslint-disable-next-line @next/next/no-img-element
-      body = <img src={url} alt={doc.name} className="mx-auto max-h-[70svh] w-auto max-w-full rounded-lg object-contain" />;
+      body = <img loading="lazy" decoding="async" src={url} alt={doc.name} className="mx-auto max-h-[70svh] w-auto max-w-full rounded-lg object-contain" />;
     } else if (isPdf(doc)) {
       const src = isAndroid() ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}` : url;
       body = <iframe src={src} title={doc.name} className="h-[70svh] w-full rounded-lg border border-border-sub bg-white" />;

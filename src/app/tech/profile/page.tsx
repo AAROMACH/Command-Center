@@ -382,7 +382,7 @@ export default function TechProfilePage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[12px] font-semibold text-text-muted flex items-center gap-1"><Phone size={10} /> Phone</Label>
-                                            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 text-xs" />
+                                            <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[12px] font-semibold text-text-muted flex items-center gap-1"><MapPin size={10} /> Work area</Label>
@@ -420,7 +420,7 @@ export default function TechProfilePage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[12px] font-semibold text-text-muted">Phone</Label>
-                                            <Input value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} className="h-11 text-xs" placeholder="+1 (555) 000-0000" />
+                                            <Input type="tel" inputMode="tel" value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} className="h-11 text-xs" placeholder="+1 (555) 000-0000" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -459,17 +459,20 @@ export default function TechProfilePage() {
                                         {WEEK_DAYS.map(day => {
                                             const slot = availability[day];
                                             return (
-                                                <div key={day} className="flex flex-wrap items-center gap-3 py-1.5 border-b border-border-sub last:border-none">
+                                                <div key={day} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2 border-b border-border-sub last:border-none">
                                                     <Switch checked={slot.on} onCheckedChange={v => setDay(day, { on: v })} aria-label={`Available ${day}`} />
-                                                    <span className="w-24 text-[13px] font-medium text-text-primary capitalize">{day}</span>
+                                                    <span className="w-24 shrink-0 text-[13px] font-medium text-text-primary capitalize">{day}</span>
                                                     {slot.on ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <Input type="time" value={slot.start} onChange={e => setDay(day, { start: e.target.value })} className="h-8 w-28 text-xs" />
-                                                            <span className="text-text-muted text-[10px]">to</span>
-                                                            <Input type="time" value={slot.end} onChange={e => setDay(day, { end: e.target.value })} className="h-8 w-28 text-xs" />
+                                                        // Phones: the two times drop to their own full-width row
+                                                        // (a 112px native time picker clips its AM/PM), indented
+                                                        // under the day name. Desktop keeps them on one line.
+                                                        <div className="flex basis-full items-center gap-2 pl-[52px] sm:basis-auto sm:pl-0">
+                                                            <Input type="time" value={slot.start} onChange={e => setDay(day, { start: e.target.value })} className="h-10 w-full min-w-0 text-xs sm:h-8 sm:w-28" aria-label={`${day} start time`} />
+                                                            <span className="shrink-0 text-text-muted text-[11px]">to</span>
+                                                            <Input type="time" value={slot.end} onChange={e => setDay(day, { end: e.target.value })} className="h-10 w-full min-w-0 text-xs sm:h-8 sm:w-28" aria-label={`${day} end time`} />
                                                         </div>
                                                     ) : (
-                                                        <span className="text-[10px] text-text-muted">Off</span>
+                                                        <span className="text-[11px] text-text-muted">Off</span>
                                                     )}
                                                 </div>
                                             );

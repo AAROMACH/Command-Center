@@ -366,7 +366,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                 <div className="grid grid-cols-3 gap-3">
                   {images.map((img, i) => (
                     <div key={i} className="relative aspect-video rounded-lg border border-border-sub overflow-hidden group bg-bg-primary">
-                      <img src={img} alt={`Evidence ${i}`} className="w-full h-full object-cover" />
+                      <img loading="lazy" decoding="async" src={img} alt={`Evidence ${i}`} className="w-full h-full object-cover" />
                       <button 
                         type="button"
                         onClick={() => removeAttachment('image', i)}

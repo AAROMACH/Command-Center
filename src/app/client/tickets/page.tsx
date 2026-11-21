@@ -428,7 +428,7 @@ export default function ClientTicketsPage() {
                                     {attachments.map((asset, i) => (
                                         <div key={i} className="relative aspect-video rounded-lg border border-border-sub overflow-hidden group bg-bg-primary flex flex-col items-center justify-center p-2">
                                             {asset.type === 'image' ? (
-                                                <img src={asset.url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover rounded" />
+                                                <img loading="lazy" decoding="async" src={asset.url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover rounded" />
                                             ) : (
                                                 <div className="flex flex-col items-center gap-1">
                                                     <FileText size={20} className="text-text-muted" />

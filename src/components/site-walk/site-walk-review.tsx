@@ -154,7 +154,7 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
                 {walk.photos.map(p => (
                   <a key={p.storagePath} href={p.url} target="_blank" rel="noreferrer" className="aspect-square rounded-md overflow-hidden border border-border-sub">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+                    <img loading="lazy" decoding="async" src={p.url} alt={p.name} className="h-full w-full object-cover" />
                   </a>
                 ))}
               </div>

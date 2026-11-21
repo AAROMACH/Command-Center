@@ -361,10 +361,12 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                             <Label className="text-[10px] font-bold text-text-muted">On-Site Contact Phone</Label>
                                             <div className="relative">
                                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                                                <Input 
+                                                <Input
+                                                    type="tel"
+                                                    inputMode="tel"
                                                     disabled={isReadOnly}
                                                     placeholder="Phone Number"
-                                                    value={editedProject.onsiteContactPhone || ''} 
+                                                    value={editedProject.onsiteContactPhone || ''}
                                                     onChange={e => setEditedProject({...editedProject, onsiteContactPhone: e.target.value})}
                                                     className="bg-bg-primary h-10 text-xs pl-10"
                                                 />

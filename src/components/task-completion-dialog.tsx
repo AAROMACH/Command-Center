@@ -115,7 +115,7 @@ export function TaskAnswers({ task, nameOf, documents = [] }: {
       {task.signatureUrl && (
         <a href={task.signatureUrl} target="_blank" rel="noreferrer" className="inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={task.signatureUrl} alt="Signature" className="h-10 rounded border border-border-sub bg-white px-1" />
+          <img loading="lazy" decoding="async" src={task.signatureUrl} alt="Signature" className="h-10 rounded border border-border-sub bg-white px-1" />
         </a>
       )}
     </div>
@@ -399,7 +399,7 @@ export function TaskCompletionDialog({ task, projectId, phaseId, open, onOpenCha
                 <div className="inline-flex rounded-md border border-border-sub p-0.5" role="tablist">
                   {(['draw', 'type'] as const).map(m => (
                     <button key={m} type="button" role="tab" aria-selected={sigMode === m} onClick={() => setSigMode(m)}
-                      className={`h-7 rounded px-3 text-[12px] font-semibold ${sigMode === m ? 'bg-brand-red text-white' : 'text-text-muted'}`}>
+                      className={`h-9 rounded px-3.5 text-[12px] font-semibold sm:h-7 sm:px-3 ${sigMode === m ? 'bg-brand-red text-white' : 'text-text-muted'}`}>
                       {m === 'draw' ? 'Draw' : 'Type'}
                     </button>
                   ))}
@@ -410,9 +410,14 @@ export function TaskCompletionDialog({ task, projectId, phaseId, open, onOpenCha
               ) : (
                 <div className="space-y-1.5">
                   <Input value={typedSig} onChange={e => setTypedSig(e.target.value)} placeholder="Type your full name" autoComplete="name" />
+                  {/* A signature is ink on paper in both themes: the colors below match
+                      the SignaturePad canvas (white, #111 stroke) so a drawn and a typed
+                      signature look the same on screen and in the PDF. */}
+                  {/* ui-check-ignore */}
                   <div className="flex h-20 items-center rounded-lg border border-border-main bg-white px-4 text-[34px] italic text-[#111]"
                     style={{ fontFamily: '"Brush Script MT", "Segoe Script", "Snell Roundhand", cursive' }}>
-                    {typedSig || <span className="text-[14px] not-italic text-gray-400" style={{ fontFamily: 'inherit' }}>Preview</span>}
+                    {/* ui-check-ignore — see above. */}
+                    {typedSig || <span className="text-[14px] not-italic text-[#9ca3af]" style={{ fontFamily: 'inherit' }}>Preview</span>}
                   </div>
                 </div>
               )}

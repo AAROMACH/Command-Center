@@ -1771,7 +1771,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     return (
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="w-screen max-w-full h-[100dvh] rounded-none border-0 bg-bg-elevated flex flex-col p-0 overflow-y-auto sm:overflow-hidden shadow-xl text-left">
+                <DialogContent className="w-full max-w-full h-[100dvh] rounded-none border-0 bg-bg-elevated flex flex-col p-0 overflow-y-auto sm:overflow-hidden shadow-xl text-left">
                     <DialogHeader className="px-4 sm:px-8 pt-4 sm:pt-6 pb-4 border-b border-border-sub bg-bg-secondary text-left shrink-0 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                             <div className="flex items-center gap-3 sm:gap-4 min-w-0">

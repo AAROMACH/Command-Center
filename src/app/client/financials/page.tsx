@@ -41,6 +41,7 @@ import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
 import { statusLabel } from '@/lib/status-styles';
 import { jobDateTimeValue } from '@/lib/jobs';
+import { clientBillingEmail } from '@/lib/recipients';
 
 /** Invoice numbers are stored with or without the INV- prefix. */
 const invLabel = (n?: string) => (n || '').toUpperCase().startsWith('INV') ? (n || '') : `INV-${n || ''}`;
@@ -258,7 +259,7 @@ export default function ClientFinancialsPage() {
                                 <p className="text-[13px] font-semibold text-text-primary">{currentUser?.billingDetails?.contactName || 'Not set'}</p>
                                 <div className="flex items-center gap-2 text-[12px] text-text-muted">
                                     <Mail size={12} />
-                                    <span>{currentUser?.billingDetails?.email || 'No email on file'}</span>
+                                    <span>{clientBillingEmail(currentUser) || 'No email on file'}</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub/50">

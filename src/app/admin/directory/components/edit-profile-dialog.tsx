@@ -161,7 +161,7 @@ function personToForm(p: Technician): FormState {
     clientCompany: p.clientCompany || '',
     businessType: p.businessType || '',
     billingContactName: p.billingDetails?.contactName || '',
-    billingEmail: p.billingDetails?.email || '',
+    billingEmail: p.billingEmail || p.billingDetails?.email || '',
     billingTerms: p.billingDetails?.terms || 'Net 30',
     billingDelivery: p.billingDetails?.deliveryMethod || 'Portal',
     customerDisplayName: p.accounting?.customerDisplayName || '',
@@ -339,6 +339,10 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
             terms: form.billingTerms,
             deliveryMethod: form.billingDelivery,
           },
+          // Invoice/quote sends and the QuickBooks customer read top-level
+          // billingEmail, so write both or this screen's value is ignored
+          // (see clientBillingEmail in lib/recipients).
+          billingEmail: form.billingEmail.trim() || null,
           'accounting.customerDisplayName': orNull(form.customerDisplayName),
           'accounting.billingAddress': orNull(form.billingAddress),
           'accounting.taxExempt': form.taxStatus === 'exempt' ? true : form.taxStatus === 'taxable' ? false : null,

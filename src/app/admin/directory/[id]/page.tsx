@@ -42,6 +42,7 @@ import { PageLoading, EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { TONE_BADGE, statusLabel, type Tone } from '@/lib/status-styles';
 import { AccountStatusBadge, accountStatusLabel } from '@/app/admin/clients/account-status';
+import { clientBillingEmail } from '@/lib/recipients';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -760,7 +761,7 @@ export default function DirectoryPersonPage() {
                   </div>
                 </div>
               </div>
-              {person.billingDetails && (
+              {(person.billingDetails || person.billingEmail) && (
                 <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
                   <h3 className="text-[13px] font-semibold text-text-primary border-b border-border-sub pb-2 flex items-center gap-2">
                     <FileText size={11} /> Billing details
@@ -768,19 +769,23 @@ export default function DirectoryPersonPage() {
                   <div className="space-y-2.5">
                     <div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billing Contact</p>
-                      <p className="text-[12px] text-text-primary">{person.billingDetails.contactName || '—'}</p>
+                      <p className="text-[12px] text-text-primary">{person.billingDetails?.contactName || '—'}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billing Email</p>
-                      <p className="text-[12px] text-text-primary">{person.billingDetails.email || '—'}</p>
+                      {/* The address invoices, quotes and QuickBooks actually use. */}
+                      <p className="text-[12px] text-text-primary">{clientBillingEmail(person) || '—'}</p>
+                      {!person.billingEmail && !person.billingDetails?.email && person.email && (
+                        <p className="text-[11px] text-text-muted">Falling back to the sign-in email.</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Payment Terms</p>
-                      <p className="text-[12px] text-text-primary">{person.billingDetails.terms || '—'}</p>
+                      <p className="text-[12px] text-text-primary">{person.billingDetails?.terms || '—'}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Invoice Delivery</p>
-                      <p className="text-[12px] text-text-primary">{person.billingDetails.deliveryMethod || '—'}</p>
+                      <p className="text-[12px] text-text-primary">{person.billingDetails?.deliveryMethod || '—'}</p>
                     </div>
                   </div>
                 </div>

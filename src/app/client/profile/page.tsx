@@ -70,7 +70,10 @@ export default function ClientProfilePage() {
                     setPhone(data.phone || '');
                     setAvatarUrl(data.avatarUrl);
                     setBillingContactName(data.billingDetails?.contactName || '');
-                    setBillingEmail(data.billingDetails?.email || '');
+                    // Top-level first: that's the one sends and QuickBooks use.
+                    // No sign-in-email fallback here — showing it would save it
+                    // as an explicit billing address on the next save.
+                    setBillingEmail(data.billingEmail || data.billingDetails?.email || '');
                     setBillingTerms(data.billingDetails?.terms || '');
                     setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
                     savedSnapshotRef.current = {
@@ -80,6 +83,7 @@ export default function ClientProfilePage() {
                         'billingDetails.contactName': data.billingDetails?.contactName || '',
                         'billingDetails.email': data.billingDetails?.email || '',
                         'billingDetails.deliveryMethod': data.billingDetails?.deliveryMethod || 'Portal',
+                        billingEmail: data.billingEmail || null,
                     };
                 }
             });
@@ -122,6 +126,10 @@ export default function ClientProfilePage() {
                 'billingDetails.contactName': billingContactName,
                 'billingDetails.email': billingEmail,
                 'billingDetails.deliveryMethod': billingDelivery,
+                // Invoice/quote sends and the QuickBooks customer read top-level
+                // billingEmail, so write both or this field is ignored
+                // (see clientBillingEmail in lib/recipients).
+                billingEmail: billingEmail.trim() || null,
             };
             await auditFieldChange('users', currentUser.id, currentUser.id, currentUser.name || currentUser.id, savedSnapshotRef.current, updates);
             await updateDoc(doc(db, 'users', currentUser.id), updates);

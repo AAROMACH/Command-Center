@@ -9,7 +9,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { getSubroles, hasPermission, isAdmin } from '@/lib/permissions';
 import { emailConfigured, emailDeliveryStatus, sendEmail } from '@/lib/server/notify-delivery';
 import { syncInvoiceById } from '@/lib/server/qbo-sync';
-import { cleanRecipients } from '@/lib/recipients';
+import { cleanRecipients, clientBillingEmail } from '@/lib/recipients';
 import { FieldValue } from 'firebase-admin/firestore';
 
 /**
@@ -36,8 +36,7 @@ async function recipientOf(inv: Record<string, any>): Promise<string> {
   if (inv.customerEmail) return inv.customerEmail;
   if (inv.clientId) {
     const c = (await getFirestore(adminApp).doc(`users/${inv.clientId}`).get()).data();
-    if (c?.billingEmail) return c.billingEmail;
-    if (c?.email) return c.email;
+    return clientBillingEmail(c);
   }
   return '';
 }

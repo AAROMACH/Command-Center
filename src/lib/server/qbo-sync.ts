@@ -3,6 +3,7 @@ import { getFirestore, type DocumentReference } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { getConnection, qboGet, qboPost, qboQuery } from './quickbooks';
 import { PAYMENT_TERMS, paymentTermsText } from '@/lib/quote-deposit';
+import { clientBillingEmail } from '@/lib/recipients';
 
 /**
  * App ↔ QuickBooks Online sync.
@@ -63,7 +64,7 @@ async function customerInfo(inv: Inv): Promise<CustomerInfo> {
     const ref = fs().doc(`users/${inv.clientId}`);
     const u = (await ref.get()).data() || {};
     const name = String(u.accounting?.customerDisplayName || u.clientCompany || inv.clientName || u.name || inv.clientId).trim();
-    return { key: inv.clientId, name, email: u.billingEmail || u.email || inv.customerEmail || null, ref, existing: u.accounting?.qboCustomer?.id || null, userDoc: true };
+    return { key: inv.clientId, name, email: clientBillingEmail(u) || inv.customerEmail || null, ref, existing: u.accounting?.qboCustomer?.id || null, userDoc: true };
   }
   const email = String(inv.customerEmail || '').trim().toLowerCase();
   const name = String(inv.clientName || email || 'Customer').trim();

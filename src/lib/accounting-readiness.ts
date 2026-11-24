@@ -1,4 +1,5 @@
 import type { PersonnelDocument, Technician } from './types';
+import { clientBillingEmail } from './recipients';
 
 /**
  * What a directory profile needs for QuickBooks:
@@ -94,7 +95,7 @@ export function customerReadiness(person: Technician): Readiness {
   return finish([
     // QuickBooks' one hard requirement: a customer name.
     { key: 'displayName', label: 'Customer name', ok: filled(customerDisplayName(person)), level: 'required', hint: 'QuickBooks needs a name for the customer.' },
-    { key: 'billingEmail', label: 'Billing email', ok: filled(person.billingDetails?.email || person.email), level: 'invoicing', hint: 'Invoices and Pay now links are emailed here.' },
+    { key: 'billingEmail', label: 'Billing email', ok: filled(clientBillingEmail(person)), level: 'invoicing', hint: 'Invoices and Pay now links are emailed here.' },
     { key: 'billingAddress', label: 'Billing address', ok: filled(acct.billingAddress || person.address), level: 'policy', hint: 'Printed on invoices; optional in QuickBooks.' },
     { key: 'terms', label: 'Payment terms', ok: filled(person.billingDetails?.terms), level: 'policy', hint: 'Without it QuickBooks uses your company default.' },
     {

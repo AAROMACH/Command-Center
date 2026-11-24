@@ -6,7 +6,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { isAdmin, isSales } from '@/lib/permissions';
 import { sendEmail } from '@/lib/server/notify-delivery';
-import { cleanRecipients } from '@/lib/recipients';
+import { cleanRecipients, clientBillingEmail } from '@/lib/recipients';
 import { canApproveQuotes } from '@/lib/approvals';
 import { randomBytes } from 'crypto';
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     let fallback: string = String(q.customerEmail || '').trim();
     if (!fallback && q.clientId) {
       const c = (await fs.doc(`users/${q.clientId}`).get()).data();
-      fallback = String(c?.billingEmail || c?.email || '').trim();
+      fallback = clientBillingEmail(c);
     }
     recipients = cleanRecipients(fallback);
   }

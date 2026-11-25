@@ -13,7 +13,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Search,
     MapPin,
-    X,
     Clock,
     Building2,
     ChevronRight,
@@ -182,11 +181,6 @@ export default function ActivityAuditPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
-
-    // Timeline filter state
-    const [timelineTechFilter, setTimelineTechFilter] = useSessionState<string>('admin/reports:timelineTechFilter', 'all');
-    const [timelineTypeFilter, setTimelineTypeFilter] = useSessionState<string>('admin/reports:timelineTypeFilter', 'all');
-    const [timelineClientFilter, setTimelineClientFilter] = useState('');
 
     // Audit Detail States
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
@@ -371,8 +365,6 @@ export default function ActivityAuditPage() {
         setDeleteConfirmId(null);
     };
 
-    const archivedEventIds = useMemo(() => new Set(archivedEvents.map(e => e.id)), [archivedEvents]);
-
     // Whether a timestamp falls inside the Archive tab's selected date range
     // (inclusive, by calendar day). No range selected = always matches.
     const matchesArchiveRange = useCallback((iso: string | undefined | null) => {
@@ -432,18 +424,6 @@ export default function ActivityAuditPage() {
                 ? (b.archivedAt || '').localeCompare(a.archivedAt || '')
                 : (a.archivedAt || '').localeCompare(b.archivedAt || ''));
     }, [archivedEvents, workOrders, assignments, technicians, matchesArchiveRange, archiveSortDir]);
-
-    const handleArchiveEvent = async (event: TimelineEvent) => {
-        try {
-            await setDoc(doc(db, 'activityArchive', event.id), {
-                ...event,
-                archivedAt: new Date().toISOString(),
-            });
-            toast({ title: 'Archived', description: `"${event.eventLabel}" moved to archive.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Archive failed', description: e.message });
-        }
-    };
 
     const handleRestoreEvent = async (eventId: string) => {
         try {
@@ -655,138 +635,7 @@ export default function ActivityAuditPage() {
         });
     };
 
-    const timelineEvents = useMemo((): TimelineEvent[] => {
-        const events: TimelineEvent[] = [];
-
-        assignments.forEach(wo => {
-            const techId = wo.assignedTechnicianId || wo.techId;
-            const tech = technicians.find(t => t.id === techId);
-            const techName = tech?.name;
-
-            if ((wo as any).assignedAt) {
-                events.push({
-                    id: `asmt-created-${wo.id}`,
-                    timestamp: (wo as any).assignedAt,
-                    type: 'assignment',
-                    eventLabel: 'Assignment Created',
-                    entity: wo.title || wo.description || wo.id.toUpperCase(),
-                    techName,
-                    techId,
-                    clientName: wo.clientName,
-                    color: 'text-accent-gold',
-                    icon: 'Wrench',
-                });
-            }
-
-            const completedStatus = ['completed', 'checked-out'];
-            if (completedStatus.includes(wo.status) && (wo as any).updatedAt) {
-                events.push({
-                    id: `asmt-completed-${wo.id}`,
-                    timestamp: (wo as any).updatedAt,
-                    type: 'assignment',
-                    eventLabel: wo.status === 'completed' ? 'Job Completed' : 'Checked Out',
-                    entity: wo.title || wo.description || wo.id.toUpperCase(),
-                    techName,
-                    techId,
-                    clientName: wo.clientName,
-                    color: 'text-text-green',
-                    icon: 'CheckCircle2',
-                });
-            }
-        });
-
-        workOrders.forEach(wo => {
-            const ts = (wo as any).createdAt;
-            if (ts) {
-                events.push({
-                    id: `wo-created-${wo.id}`,
-                    timestamp: ts,
-                    type: 'work_order',
-                    eventLabel: 'Work Order Created',
-                    entity: wo.title || wo.description || wo.id.toUpperCase(),
-                    clientName: wo.clientName,
-                    color: 'text-text-muted',
-                    icon: 'FileText',
-                });
-            }
-        });
-
-        weeklyLogs.forEach(log => {
-            const tech = technicians.find(t => t.id === log.techId);
-            if (log.submittedAt) {
-                events.push({
-                    id: `log-submitted-${log.id}`,
-                    timestamp: log.submittedAt,
-                    type: 'log',
-                    eventLabel: 'Weekly Log Submitted',
-                    entity: `Week of ${log.weekOf}`,
-                    techName: tech?.name,
-                    techId: log.techId,
-                    color: 'text-accent-gold',
-                    icon: 'ClipboardList',
-                });
-            }
-            if (log.status === 'Approved') {
-                events.push({
-                    id: `log-approved-${log.id}`,
-                    timestamp: log.submittedAt || log.weekOf,
-                    type: 'log',
-                    eventLabel: 'Weekly Log Approved',
-                    entity: `Week of ${log.weekOf}`,
-                    techName: tech?.name,
-                    techId: log.techId,
-                    color: 'text-text-green',
-                    icon: 'CheckCircle2',
-                });
-            }
-        });
-
-        invoices.forEach(inv => {
-            if (inv.issueDate) {
-                events.push({
-                    id: `inv-issued-${inv.id}`,
-                    timestamp: inv.issueDate,
-                    type: 'invoice',
-                    eventLabel: 'Invoice Issued',
-                    entity: `#${inv.invoiceNumber} — $${inv.total?.toFixed(2)}`,
-                    clientName: inv.clientName,
-                    color: 'text-text-muted',
-                    icon: 'DollarSign',
-                });
-            }
-            if (inv.status === 'paid') {
-                events.push({
-                    id: `inv-paid-${inv.id}`,
-                    timestamp: inv.dueDate || inv.issueDate,
-                    type: 'invoice',
-                    eventLabel: 'Invoice Paid',
-                    entity: `#${inv.invoiceNumber} — $${inv.total?.toFixed(2)}`,
-                    clientName: inv.clientName,
-                    color: 'text-text-green',
-                    icon: 'Coins',
-                });
-            }
-        });
-
-        return events
-            .filter(e => !!e.timestamp)
-            // Timestamps mix ISO datetimes and 'MM-dd-yyyy' dates (weekOf,
-            // invoice dates) — sort by parsed time, not as text.
-            .sort((a, b) => (parseLocalDate(b.timestamp)?.getTime() || 0) - (parseLocalDate(a.timestamp)?.getTime() || 0));
-    }, [assignments, workOrders, weeklyLogs, invoices, technicians]);
-
-    const filteredTimelineEvents = useMemo(() => {
-        return timelineEvents.filter(e => {
-            if (archivedEventIds.has(e.id)) return false;
-            if (timelineTechFilter !== 'all' && e.techId !== timelineTechFilter) return false;
-            if (timelineTypeFilter !== 'all' && e.type !== timelineTypeFilter) return false;
-            if (timelineClientFilter && !(e.clientName || '').toLowerCase().includes(timelineClientFilter.toLowerCase())) return false;
-            return true;
-        });
-    }, [timelineEvents, archivedEventIds, timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
-
     // Paged lists (components/list-pager.tsx).
-    const timelinePager = usePaged(filteredTimelineEvents, PAGE_SIZES_LARGE, 'reports-timeline', [timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
     const visitsPager = usePaged(sortedTechVisits, PAGE_SIZES_LARGE, 'reports-tech-visits', [selectedTechId]);
     // Completed work (archived jobs live in the Archive tab), newest first by
     // scheduled date — a string sort mixed date formats.
@@ -1149,114 +998,6 @@ export default function ActivityAuditPage() {
                         </div>
 
                         <div className="min-h-[500px] text-left">
-                            {/* TIMELINE TAB - moved to Insights page */}
-                            <TabsContent value="timeline" className="m-0 text-left hidden">
-                                <div className="space-y-5">
-                                    {/* Filter bar */}
-                                    <div className="flex flex-wrap items-center gap-3 p-4 bg-bg-secondary rounded-xl border border-border-sub">
-                                        <Select value={timelineTechFilter} onValueChange={setTimelineTechFilter}>
-                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold bg-bg-primary border-border-main">
-                                                <SelectValue placeholder="All Techs" />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-bg-elevated border-border-main">
-                                                <SelectItem value="all" className="text-[10px] font-bold">All Techs</SelectItem>
-                                                {technicians.filter(t => !isClient(t)).map(t => (
-                                                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">{t.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <Select value={timelineTypeFilter} onValueChange={setTimelineTypeFilter}>
-                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold bg-bg-primary border-border-main">
-                                                <SelectValue placeholder="All Events" />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-bg-elevated border-border-main">
-                                                <SelectItem value="all" className="text-[10px] font-bold">All Events</SelectItem>
-                                                <SelectItem value="assignment" className="text-[10px] font-bold">Assignments</SelectItem>
-                                                <SelectItem value="work_order" className="text-[10px] font-bold">Work Orders</SelectItem>
-                                                <SelectItem value="log" className="text-[10px] font-bold">Weekly Logs</SelectItem>
-                                                <SelectItem value="invoice" className="text-[10px] font-bold">Invoices</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <Input
-                                            placeholder="Filter by client..."
-                                            value={timelineClientFilter}
-                                            onChange={e => setTimelineClientFilter(e.target.value)}
-                                            className="h-8 w-[180px] text-[10px] bg-bg-primary border-border-main"
-                                        />
-                                        {(timelineTechFilter !== 'all' || timelineTypeFilter !== 'all' || timelineClientFilter) && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 text-[11px] font-bold text-text-muted"
-                                                onClick={() => { setTimelineTechFilter('all'); setTimelineTypeFilter('all'); setTimelineClientFilter(''); }}
-                                            >
-                                                <X size={11} className="mr-1" /> Clear
-                                            </Button>
-                                        )}
-                                        <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                                            {filteredTimelineEvents.length} events
-                                        </span>
-                                    </div>
-
-                                    {/* Timeline feed */}
-                                    {filteredTimelineEvents.length === 0 ? (
-                                        <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
-                                            <ActivityIcon size={32} className="mx-auto text-text-muted mb-2" />
-                                            <p className="text-[10px] font-bold text-text-muted">No events match the current filter</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-1">
-                                            {timelinePager.items.map(event => {
-                                                let tsDisplay = '';
-                                                try {
-                                                    const d = new Date(event.timestamp);
-                                                    tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a');
-                                                } catch { tsDisplay = event.timestamp; }
-
-                                                const typeColors: Record<string, string> = {
-                                                    assignment: 'border-l-accent-gold',
-                                                    work_order: 'border-l-border-main',
-                                                    log: 'border-l-brand-red',
-                                                    invoice: 'border-l-text-green',
-                                                    site_request: 'border-l-text-muted',
-                                                };
-
-                                                return (
-                                                    <div key={event.id} className={cn(
-                                                        'flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors',
-                                                        typeColors[event.type] || 'border-l-border-sub'
-                                                    )}>
-                                                        <div className="w-[120px] shrink-0 text-right">
-                                                            <p className="text-[11px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
-                                                        </div>
-                                                        <div className="flex-1 min-w-0 text-left">
-                                                            <p className={cn('text-[10px] font-bold uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
-                                                            <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
-                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                {event.techName && <span className="text-[11px] text-text-muted font-bold">{event.techName}</span>}
-                                                                {event.techName && event.clientName && <span className="text-text-muted text-[11px]">·</span>}
-                                                                {event.clientName && <span className="text-[11px] text-text-muted">{event.clientName}</span>}
-                                                            </div>
-                                                        </div>
-                                                        <Badge variant="outline" className="text-[10px] shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary shrink-0"
-                                                            title="Archive event"
-                                                            onClick={() => handleArchiveEvent(event)}
-                                                        >
-                                                            <ArchiveIcon size={11} />
-                                                        </Button>
-                                                    </div>
-                                                );
-                                            })}
-                                            <ListPager pager={timelinePager} noun="events" />
-                                        </div>
-                                    )}
-                                </div>
-                            </TabsContent>
-
                             <TabsContent value="__tech_removed__" className="m-0 text-left">
                                 {selectedTechId && activeTech && techStats ? (
                                     <div className="space-y-8 animate-in fade-in duration-300 text-left">

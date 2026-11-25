@@ -18,8 +18,11 @@ type Options = {
  * let them read other users (to find admins or their addresses) or write
  * notification ids through every path, so their alerts silently vanished.
  *
- * Nobody is notified about their own action — the server drops the caller
- * from every recipient list.
+ * Audience alerts (the admin bells) leave out whoever did it — oversight of
+ * your own action is noise. A direct alert is delivered even to the caller: an
+ * admin who assigns themselves a job still needs it in their Tech Portal bell
+ * and on their phone. Where a direct alert genuinely shouldn't come back to
+ * the person who triggered it, the call site leaves them out (lib/approvals.ts).
  */
 async function post(payload: { userId?: string; audience?: 'admins' | 'payroll_admins' | 'project_managers'; title?: string; body?: string; entity?: Entity; inAppOnly?: boolean; portal?: NotifyPortal; kind?: 'access_request' | 'message'; messageId?: string }) {
   try {

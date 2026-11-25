@@ -3,7 +3,9 @@ import { getFirestore, type DocumentReference } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { getConnection, qboGet, qboPost, qboQuery } from './quickbooks';
 import { PAYMENT_TERMS, paymentTermsText } from '@/lib/quote-deposit';
-import { clientBillingEmail } from '@/lib/recipients';
+import { resolveRecipient } from '@/lib/client-contacts';
+import { loadClient } from './client-recipients';
+import type { QboLink } from '@/lib/types';
 
 /**
  * App ↔ QuickBooks Online sync.
@@ -57,38 +59,87 @@ async function itemId(name: string): Promise<string> {
 
 // ── Customers ────────────────────────────────────────────────────────────
 
-type CustomerInfo = { key: string; name: string; email: string | null; ref: DocumentReference; existing: string | null; userDoc: boolean };
+type CustomerInfo = {
+  key: string; name: string; email: string | null; ref: DocumentReference;
+  existing: string | null; userDoc: boolean;
+  /** The address last pushed to QuickBooks, to spot a changed billing email. */
+  syncedEmail: string | null;
+};
 
 async function customerInfo(inv: Inv): Promise<CustomerInfo> {
   if (inv.clientId) {
     const ref = fs().doc(`users/${inv.clientId}`);
-    const u = (await ref.get()).data() || {};
+    const { client, contacts } = await loadClient(inv.clientId);
+    const u = client || {};
     const name = String(u.accounting?.customerDisplayName || u.clientCompany || inv.clientName || u.name || inv.clientId).trim();
-    return { key: inv.clientId, name, email: clientBillingEmail(u) || inv.customerEmail || null, ref, existing: u.accounting?.qboCustomer?.id || null, userDoc: true };
+    // The customer's email is the one invoices go to — the accounts payable
+    // contact when there is one (lib/client-contacts), else the billing email.
+    const email = resolveRecipient('invoice', u, contacts).email || inv.customerEmail || null;
+    const link = u.accounting?.qboCustomer;
+    return { key: inv.clientId, name, email, ref, existing: link?.id || null, userDoc: true, syncedEmail: link?.email ?? null };
   }
   const email = String(inv.customerEmail || '').trim().toLowerCase();
   const name = String(inv.clientName || email || 'Customer').trim();
   const key = (email || name).replace(/[\/.#$\[\]]/g, '_').slice(0, 200);
   const ref = fs().doc(`integrations/quickbooks/customers/${key}`);
-  return { key, name, email: email || null, ref, existing: (await ref.get()).data()?.id || null, userDoc: false };
+  const existing = (await ref.get()).data();
+  return { key, name, email: email || null, ref, existing: existing?.id || null, userDoc: false, syncedEmail: existing?.email ?? null };
+}
+
+const sameEmail = (a: string | null, b: string | null) =>
+  String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
+/** Remember what we pushed, so the next sync can tell the address changed. */
+async function saveCustomerLink(c: CustomerInfo, link: QboLink): Promise<void> {
+  if (c.userDoc) await c.ref.set({ accounting: { qboCustomer: link } }, { merge: true });
+  else await c.ref.set(link);
+}
+
+/**
+ * The customer's email in QuickBooks only used to be written when the record
+ * was created, so correcting a client's billing email never reached an
+ * existing customer. Patch it when it no longer matches.
+ */
+async function pushCustomerEmail(c: CustomerInfo, id: string): Promise<void> {
+  if (!c.email || sameEmail(c.email, c.syncedEmail)) return;
+  // SyncToken has to be the current one, so read it right before the update.
+  const cur = (await qboGet(`/customer/${id}`)).Customer;
+  if (!cur?.SyncToken) return;
+  if (sameEmail(c.email, cur.PrimaryEmailAddr?.Address || null)) {
+    await saveCustomerLink(c, { id, syncToken: String(cur.SyncToken), syncedAt: now(), email: c.email });
+    return;
+  }
+  const updated = (await qboPost('/customer', {
+    Id: id, SyncToken: String(cur.SyncToken), sparse: true,
+    PrimaryEmailAddr: { Address: c.email },
+  })).Customer;
+  await saveCustomerLink(c, { id, syncToken: String(updated?.SyncToken ?? cur.SyncToken), syncedAt: now(), email: c.email });
 }
 
 async function ensureCustomer(inv: Inv): Promise<string> {
   const c = await customerInfo(inv);
-  if (c.existing) return c.existing;
+  if (c.existing) {
+    // A changed billing email never used to reach a customer we already made.
+    // Never fail the invoice push over it — it retries on the next sync.
+    await pushCustomerEmail(c, c.existing).catch(() => {});
+    return c.existing;
+  }
   // QuickBooks display names are unique: reuse one that's already there.
   const q = await qboQuery(`SELECT Id FROM Customer WHERE DisplayName = '${esc(c.name.slice(0, 100))}'`);
   let id = q.QueryResponse?.Customer?.[0]?.Id as string | undefined;
-  if (!id) {
-    const created = await qboPost('/customer', {
-      DisplayName: c.name.slice(0, 100),
-      ...(c.email ? { PrimaryEmailAddr: { Address: c.email } } : {}),
-    });
-    id = created.Customer.Id as string;
+  if (id) {
+    // Reused an existing customer: its email is whatever QuickBooks already
+    // had, so bring it in line with the app instead of trusting it.
+    await saveCustomerLink(c, { id, syncedAt: now(), email: null });
+    await pushCustomerEmail({ ...c, syncedEmail: null }, id).catch(() => {});
+    return id;
   }
-  const link = { id, syncedAt: now() };
-  if (c.userDoc) await c.ref.set({ accounting: { qboCustomer: link } }, { merge: true });
-  else await c.ref.set(link);
+  const created = await qboPost('/customer', {
+    DisplayName: c.name.slice(0, 100),
+    ...(c.email ? { PrimaryEmailAddr: { Address: c.email } } : {}),
+  });
+  id = created.Customer.Id as string;
+  await saveCustomerLink(c, { id, syncToken: created.Customer?.SyncToken ? String(created.Customer.SyncToken) : undefined, syncedAt: now(), email: c.email });
   return id;
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -25,7 +25,10 @@ import { isValidLast4, WORKER_TYPE_LABELS } from '@/lib/accounting-readiness';
 import { useAuth } from '@/contexts/auth-context';
 import { canEditUserAccess, canEditUserPay } from '@/lib/profile-permissions';
 import { ROLE_DATA } from '@/lib/constants/roles';
-import type { Technician, AppRole } from '@/lib/types';
+import type { Technician, AppRole, ClientContact } from '@/lib/types';
+import {
+  CONTACT_TYPE_LABELS, DOC_KIND_LABEL, defaultContactFor, rankedContactsFor, type DocKind,
+} from '@/lib/client-contacts';
 import { cn } from '@/lib/utils';
 import {
   User, Phone, Mail, MapPin, Briefcase, Shield, Heart,
@@ -115,6 +118,9 @@ type FormState = {
   businessType: string;
   billingContactName: string;
   billingEmail: string;
+  /** Contact that invoices / quotes go to ('' = pick the best by role). */
+  billingContactId: string;
+  quoteContactId: string;
   billingTerms: string;
   billingDelivery: string;
   customerDisplayName: string;
@@ -162,6 +168,8 @@ function personToForm(p: Technician): FormState {
     businessType: p.businessType || '',
     billingContactName: p.billingDetails?.contactName || '',
     billingEmail: p.billingEmail || p.billingDetails?.email || '',
+    billingContactId: p.billingContactId || '',
+    quoteContactId: p.quoteContactId || '',
     billingTerms: p.billingDetails?.terms || 'Net 30',
     billingDelivery: p.billingDetails?.deliveryMethod || 'Portal',
     customerDisplayName: p.accounting?.customerDisplayName || '',
@@ -205,6 +213,18 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
       setCertInput('');
     }
   }, [open, person]);
+
+  // The client's own contacts, for "who do invoices / quotes go to".
+  // Admin-only in firestore.rules, which is who opens this dialog.
+  const [contacts, setContacts] = useState<ClientContact[]>([]);
+  useEffect(() => {
+    if (!open || !person.id) { setContacts([]); return; }
+    let live = true;
+    getDocs(collection(db, 'users', person.id, 'contacts'))
+      .then(snap => { if (live) setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }) as ClientContact)); })
+      .catch(() => { if (live) setContacts([]); });
+    return () => { live = false; };
+  }, [open, person.id]);
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm(prev => ({ ...prev, [key]: val }));
@@ -343,6 +363,8 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
           // billingEmail, so write both or this screen's value is ignored
           // (see clientBillingEmail in lib/recipients).
           billingEmail: form.billingEmail.trim() || null,
+          billingContactId: form.billingContactId || null,
+          quoteContactId: form.quoteContactId || null,
           'accounting.customerDisplayName': orNull(form.customerDisplayName),
           'accounting.billingAddress': orNull(form.billingAddress),
           'accounting.taxExempt': form.taxStatus === 'exempt' ? true : form.taxStatus === 'taxable' ? false : null,
@@ -827,6 +849,44 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                             <Mail size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
                             <Input className={cn(inputCls, 'pl-7')} value={form.billingEmail} onChange={e => set('billingEmail', e.target.value)} placeholder="ap@company.com" />
                           </div>
+                        </div>
+                      </div>
+                      {/* Who each document goes to. Invoices land with accounts
+                          payable; a quote usually goes to the person who asked
+                          for it. Unset = the best contact for that role. */}
+                      <div className="border-t border-border-sub pt-3 space-y-3">
+                        <p className="text-[11px] text-text-muted">
+                          {contacts.length
+                            ? 'Who each document goes to by default. You can still change the address on any single send.'
+                            : 'Add people under Clients → Contacts to send invoices and quotes to different addresses.'}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {(['invoice', 'quote'] as DocKind[]).map(kind => {
+                            const field = kind === 'invoice' ? 'billingContactId' : 'quoteContactId';
+                            const ranked = rankedContactsFor(kind, contacts);
+                            const auto = defaultContactFor(kind, { ...person, [field]: '' }, contacts);
+                            return (
+                              <div key={kind} className="space-y-1">
+                                <Label className={labelCls}>{DOC_KIND_LABEL[kind]} go to</Label>
+                                <Select value={form[field] || 'auto'} onValueChange={v => set(field, v === 'auto' ? '' : v)}>
+                                  <SelectTrigger className={inputCls} disabled={!ranked.length}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-bg-elevated border-border-main">
+                                    <SelectItem value="auto">
+                                      {auto ? `Best match — ${auto.name}` : 'Billing email above'}
+                                    </SelectItem>
+                                    {ranked.map(c => (
+                                      <SelectItem key={c.id} value={c.id}>
+                                        {c.name} · {CONTACT_TYPE_LABELS[c.contactType] || c.contactType}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {!ranked.length && <p className="text-[11px] text-text-muted">No contact with an email address.</p>}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">

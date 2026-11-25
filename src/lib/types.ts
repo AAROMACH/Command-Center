@@ -249,8 +249,16 @@ export type Technician = {
    *  user as a Vendor (a paid tech) or a Customer (a client). See
    *  lib/accounting-readiness.ts. */
   accounting?: UserAccounting;
-  /** Client: where invoices are emailed (else their sign-in email). */
+  /** Client: where invoices are emailed (else their sign-in email).
+   *  Read through clientBillingEmail() in lib/recipients — never on its own. */
   billingEmail?: string | null;
+  /** Client: the contact in `users/{id}/contacts` that invoices go to, and
+   *  the email on their QuickBooks customer. Unset = the best accounts
+   *  payable / billing contact, else billingEmail (lib/client-contacts). */
+  billingContactId?: string | null;
+  /** Client: the contact quotes go to — often the buyer who asked for it,
+   *  not accounts payable. Unset = the best decision maker / main contact. */
+  quoteContactId?: string | null;
   billingDetails?: {
     contactName: string;
     email: string;
@@ -299,6 +307,9 @@ export type QboLink = {
   syncToken?: string;
   syncedAt?: string;
   error?: string | null;
+  /** Customers: the address last pushed to QuickBooks, so the sync can tell
+   *  the billing email changed and patch it instead of leaving it stale. */
+  email?: string | null;
 };
 
 export type WorkerType = '1099_contractor' | 'w2_employee' | 'not_paid';

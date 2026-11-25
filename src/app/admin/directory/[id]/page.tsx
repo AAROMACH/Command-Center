@@ -35,7 +35,7 @@ import {
   vendorReadiness, customerReadiness, customerDisplayName, hasW9OnFile, WORKER_TYPE_LABELS, CHECK_LEVEL_LABEL, type CheckLevel, type Readiness,
 } from '@/lib/accounting-readiness';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent, QboLink } from '@/lib/types';
+import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent, QboLink, ClientContact } from '@/lib/types';
 import { isAssignedTo, isArchivedJob } from '@/lib/jobs';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading, EmptyState } from '@/components/empty-state';
@@ -43,6 +43,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { TONE_BADGE, statusLabel, type Tone } from '@/lib/status-styles';
 import { AccountStatusBadge, accountStatusLabel } from '@/app/admin/clients/account-status';
 import { clientBillingEmail } from '@/lib/recipients';
+import { resolveRecipient, DOC_KIND_LABEL, type DocKind } from '@/lib/client-contacts';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -157,6 +158,7 @@ export default function DirectoryPersonPage() {
   const canEditAccess = canEditUserAccess(me);
   const [projects, setProjects] = useState<Project[]>([]);
   const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
+  const [clientContacts, setClientContacts] = useState<ClientContact[]>([]);
   const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; authorName?: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -207,6 +209,10 @@ export default function DirectoryPersonPage() {
       const mine = snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent));
       setPenaltyEvents(mine.sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
     });
+    // A client's own contacts — who invoices and quotes actually go to.
+    const unsubContacts = onSnapshot(collection(db, 'users', id, 'contacts'), snap => {
+      setClientContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }) as ClientContact));
+    }, () => setClientContacts([]));
     const unsubNotes = onSnapshot(collection(db, 'users', id, 'techNotes'), snap => {
       setTechNotes(
         snap.docs.map(d => ({ ...d.data(), id: d.id } as { id: string; text: string; createdAt: string }))
@@ -243,7 +249,7 @@ export default function DirectoryPersonPage() {
     const unsubProjects = onSnapshot(query(collection(db, 'projects'), where('assignedTechnicianIds', 'array-contains', id)), snap => {
       setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     }, () => setProjects([]));
-    return () => { unsubUser(); unsubDocs(); unsubLegacyDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubJobsC(); unsubProjects(); };
+    return () => { unsubUser(); unsubDocs(); unsubLegacyDocs(); unsubPenalty(); unsubContacts(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubJobsC(); unsubProjects(); };
   }, [id]);
 
   useEffect(() => {
@@ -779,6 +785,18 @@ export default function DirectoryPersonPage() {
                         <p className="text-[11px] text-text-muted">Falling back to the sign-in email.</p>
                       )}
                     </div>
+                    {/* Where each document actually goes, so this is checkable
+                        without opening the editor. Set it in Edit profile. */}
+                    {(['invoice', 'quote'] as DocKind[]).map(kind => {
+                      const r = resolveRecipient(kind, person, clientContacts);
+                      return (
+                        <div key={kind}>
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{DOC_KIND_LABEL[kind]} go to</p>
+                          <p className="text-[12px] text-text-primary">{r.email || '—'}</p>
+                          <p className="text-[11px] text-text-muted">{r.contact ? `${r.contact.name} · ${r.reason}` : r.reason}</p>
+                        </div>
+                      );
+                    })}
                     <div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Payment Terms</p>
                       <p className="text-[12px] text-text-primary">{person.billingDetails?.terms || '—'}</p>

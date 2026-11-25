@@ -10,6 +10,7 @@ import { invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RecipientsField, recipientsValid } from '@/components/recipients-field';
+import type { RecipientOption } from '@/lib/client-contacts';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,9 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
   };
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState<string[]>(['']);
+  // The client's contacts for this invoice, and why the default was picked.
+  const [toOptions, setToOptions] = useState<RecipientOption[]>([]);
+  const [toWhy, setToWhy] = useState('');
   const [replyToMe, setReplyToMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [link, setLink] = useState('');
@@ -74,6 +78,8 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
       const r = await fetch(`/api/invoices/send?invoiceId=${encodeURIComponent(invoice.id)}`, { headers: { Authorization: `Bearer ${await token()}` } });
       const d = await r.json();
       setTo([d.to || '']);
+      setToOptions(Array.isArray(d.options) ? d.options : []);
+      setToWhy(typeof d.why === 'string' ? d.why : '');
       setSendLog(Array.isArray(d.sendLog) ? d.sendLog : []);
     } catch { /* leave blank to type */ }
     setLoading(false);
@@ -158,7 +164,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
             </div>
           </div>
           {!salesMode && <Button variant="outline" size="sm" className="self-start" onClick={() => { setOpen(false); setEditing(true); }}><Pencil size={13} className="mr-1.5" /> Edit invoice</Button>}
-          <RecipientsField value={to} onChange={setTo} disabled={loading} />
+          <RecipientsField value={to} onChange={setTo} disabled={loading} options={toOptions} why={toWhy} />
           <label className="flex items-start gap-2 text-[12px] text-text-secondary cursor-pointer">
             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--brand-red)]" checked={replyToMe} onChange={e => setReplyToMe(e.target.checked)} disabled={loading} />
             <span>Use my email{auth.currentUser?.email ? ` (${auth.currentUser.email})` : ''} as the reply-to, so the customer’s replies come to me</span>

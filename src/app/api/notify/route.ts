@@ -174,12 +174,17 @@ export async function POST(req: NextRequest) {
   let recipients: { id: string; data: Record<string, any> }[];
   if (audience) {
     const snap = await fs.collection('users').where('roles', 'array-contains-any', AUDIENCE_ROLES[audience]).get();
-    // Never notify someone about their own action.
+    // An audience alert is oversight — whoever did it is left out, or every
+    // admin action would bounce straight back to the admin who took it.
     recipients = snap.docs.map(d => ({ id: d.id, data: d.data() })).filter(r => r.id !== callerId);
   } else {
-    // Never notify someone about their own action (an admin who assigns a
-    // job to themselves already knows).
-    if (String(userId) === callerId) return NextResponse.json({ status: 'skipped', recipients: 0 });
+    // A direct alert is addressed to one person on purpose, so it is delivered
+    // even when that person is the caller. An admin who also works in the
+    // field and assigns themselves a job still needs "New job assigned" in
+    // their Tech Portal bell and on their phone — that record is what they
+    // work the job from, not a courtesy copy. Call sites that really do mean
+    // "don't tell me what I just did" leave the caller out themselves (see
+    // lib/approvals.ts), and the audience branch above covers oversight.
     const snap = await fs.collection('users').doc(String(userId)).get();
     if (!snap.exists) return NextResponse.json({ error: 'Unknown user' }, { status: 404 });
     const data = snap.data() || {};

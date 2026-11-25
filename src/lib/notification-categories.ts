@@ -25,17 +25,50 @@ export type CategoryStyle = {
   chip: string;
   /** The small colour dot in the filter list. */
   dot: string;
+  /** A label in this kind's colour (History → App activity's event labels). */
+  text: string;
+  /** Left edge of a timeline row. */
+  borderL: string;
 };
 
 export const CATEGORIES: CategoryStyle[] = [
-  { id: 'jobs', label: 'Jobs', Icon: ClipboardList, tile: 'bg-brand-blue/10 text-brand-blue border-brand-blue/30', chip: 'bg-brand-blue/10 text-brand-blue border-brand-blue/40', dot: 'bg-brand-blue' },
-  { id: 'pay', label: 'Pay & billing', Icon: Wallet, tile: 'bg-text-green/10 text-text-green border-text-green/30', chip: 'bg-text-green/10 text-text-green border-text-green/40', dot: 'bg-text-green' },
-  { id: 'messages', label: 'Messages', Icon: MessageSquare, tile: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30', chip: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/40', dot: 'bg-brand-cyan' },
-  { id: 'projects', label: 'Projects', Icon: FolderKanban, tile: 'bg-brand-purple/10 text-brand-purple border-brand-purple/30', chip: 'bg-brand-purple/10 text-brand-purple border-brand-purple/40', dot: 'bg-brand-purple' },
-  { id: 'requests', label: 'Requests', Icon: Inbox, tile: 'bg-accent-gold/10 text-accent-gold border-accent-gold/30', chip: 'bg-accent-gold/10 text-accent-gold border-accent-gold/40', dot: 'bg-accent-gold' },
-  { id: 'sales', label: 'Sales', Icon: TrendingUp, tile: 'bg-brand-emerald/10 text-brand-emerald border-brand-emerald/30', chip: 'bg-brand-emerald/10 text-brand-emerald border-brand-emerald/40', dot: 'bg-brand-emerald' },
-  { id: 'other', label: 'Other', Icon: Bell, tile: 'bg-bg-secondary text-text-secondary border-border-sub', chip: 'bg-bg-secondary text-text-secondary border-border-main', dot: 'bg-text-muted' },
+  { id: 'jobs', label: 'Jobs', Icon: ClipboardList, tile: 'bg-brand-blue/10 text-brand-blue border-brand-blue/30', chip: 'bg-brand-blue/10 text-brand-blue border-brand-blue/40', dot: 'bg-brand-blue', text: 'text-brand-blue', borderL: 'border-l-brand-blue' },
+  { id: 'pay', label: 'Pay & billing', Icon: Wallet, tile: 'bg-text-green/10 text-text-green border-text-green/30', chip: 'bg-text-green/10 text-text-green border-text-green/40', dot: 'bg-text-green', text: 'text-text-green', borderL: 'border-l-text-green' },
+  { id: 'messages', label: 'Messages', Icon: MessageSquare, tile: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30', chip: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/40', dot: 'bg-brand-cyan', text: 'text-brand-cyan', borderL: 'border-l-brand-cyan' },
+  { id: 'projects', label: 'Projects', Icon: FolderKanban, tile: 'bg-brand-purple/10 text-brand-purple border-brand-purple/30', chip: 'bg-brand-purple/10 text-brand-purple border-brand-purple/40', dot: 'bg-brand-purple', text: 'text-brand-purple', borderL: 'border-l-brand-purple' },
+  { id: 'requests', label: 'Requests', Icon: Inbox, tile: 'bg-accent-gold/10 text-accent-gold border-accent-gold/30', chip: 'bg-accent-gold/10 text-accent-gold border-accent-gold/40', dot: 'bg-accent-gold', text: 'text-accent-gold', borderL: 'border-l-accent-gold' },
+  { id: 'sales', label: 'Sales', Icon: TrendingUp, tile: 'bg-brand-emerald/10 text-brand-emerald border-brand-emerald/30', chip: 'bg-brand-emerald/10 text-brand-emerald border-brand-emerald/40', dot: 'bg-brand-emerald', text: 'text-brand-emerald', borderL: 'border-l-brand-emerald' },
+  { id: 'other', label: 'Other', Icon: Bell, tile: 'bg-bg-secondary text-text-secondary border-border-sub', chip: 'bg-bg-secondary text-text-secondary border-border-main', dot: 'bg-text-muted', text: 'text-text-secondary', borderL: 'border-l-border-main' },
 ];
+
+/**
+ * History → App activity's event types, in the same seven kinds as the bell.
+ *
+ * Both surfaces now take their colour and icon from CATEGORIES, so blue means
+ * jobs and green means money wherever you are. App activity's finer types
+ * stay as its filter and its per-row badge — the colour carries the kind, not
+ * the outcome, which is why a completed job is no longer green (that used to
+ * collide with green-for-money, and the label already says "Job Completed").
+ */
+export const ACTIVITY_CATEGORY: Record<string, NotificationCategory> = {
+  assignment: 'jobs',
+  work_order: 'jobs',
+  dispatch: 'jobs',
+  log: 'pay',
+  payroll: 'pay',
+  payroll_paid: 'pay',
+  invoice: 'pay',
+  site_request: 'requests',
+  request: 'requests',
+  project: 'projects',
+  message: 'messages',
+  sales: 'sales',
+};
+
+/** The kind one of App activity's event types belongs to. */
+export function categoryForActivity(type: string): NotificationCategory {
+  return ACTIVITY_CATEGORY[String(type || '')] ?? 'other';
+}
 
 const BY_ID = new Map(CATEGORIES.map(c => [c.id, c]));
 

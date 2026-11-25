@@ -259,6 +259,20 @@ export type Technician = {
   /** Client: the contact quotes go to — often the buyer who asked for it,
    *  not accounts payable. Unset = the best decision maker / main contact. */
   quoteContactId?: string | null;
+  /** Client: which of OUR people owns this relationship — the name and number
+   *  the client sees in their portal when they have a question. Admin-set. */
+  accountManagerId?: string | null;
+  /** Display copy of accountManagerId's details. Denormalized on purpose:
+   *  firestore.rules lets a client read only their own user doc, so they
+   *  could never read the staff member's. Rewritten whenever an admin saves
+   *  the client, so it can lag a staff phone change until then. */
+  accountManager?: {
+    id: string;
+    name: string;
+    jobTitle?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
   billingDetails?: {
     contactName: string;
     /** Read through clientBillingEmail() in lib/recipients, never on its own. */
@@ -1540,6 +1554,12 @@ export type ClientContact = {
   email?: string;
   contactType: 'main' | 'billing' | 'site' | 'emergency' | 'decision_maker' | 'accounts_payable' | 'store_manager' | 'regional_manager';
   isPrimary?: boolean;
+  /** Which of our people deals with this person. Informational, and it
+   *  orders the send dialog's list — it never changes which address an
+   *  invoice defaults to, so who is logged in can't move where money mail
+   *  goes (see lib/client-contacts). */
+  ownerId?: string | null;
+  ownerName?: string | null;
   preferredContactMethod?: 'phone' | 'email' | 'text';
   notes?: string;
   createdAt: string;

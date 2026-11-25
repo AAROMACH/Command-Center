@@ -10,7 +10,7 @@ import { getSubroles, hasPermission, isAdmin } from '@/lib/permissions';
 import { emailConfigured, emailDeliveryStatus, sendEmail } from '@/lib/server/notify-delivery';
 import { syncInvoiceById } from '@/lib/server/qbo-sync';
 import { cleanRecipients } from '@/lib/recipients';
-import { recipientFor } from '@/lib/server/client-recipients';
+import { recipientFor, siteOfInvoice } from '@/lib/server/client-recipients';
 import type { RecipientOption } from '@/lib/client-contacts';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -35,13 +35,16 @@ async function caller(req: NextRequest) {
 }
 
 /** Who the invoice goes to by default, plus every address offerable for it. */
-async function recipientOf(inv: Record<string, any>): Promise<{ to: string; why: string; options: RecipientOption[] }> {
+async function recipientOf(inv: Record<string, any>, viewerId?: string | null): Promise<{ to: string; why: string; options: RecipientOption[] }> {
   // An outside customer (no client account) has only the address on the invoice.
   if (!inv.clientId) {
     const to = String(inv.customerEmail || '').trim();
     return { to, why: to ? 'On the invoice' : 'No address on file', options: [] };
   }
-  const { resolved, options } = await recipientFor('invoice', inv.clientId);
+  const { resolved, options } = await recipientFor('invoice', inv.clientId, {
+    siteId: await siteOfInvoice(inv),
+    viewerId,
+  });
   // An address typed onto the invoice itself still wins over the client's default.
   const onInvoice = String(inv.customerEmail || '').trim();
   if (onInvoice) return { to: onInvoice, why: 'On the invoice', options };
@@ -56,7 +59,8 @@ type SendRecord = { at: string; to: string; by: string; emailId: string | null; 
 const RESEND_COOLDOWN_MIN = 10;
 
 export async function GET(req: NextRequest) {
-  if (!(await caller(req))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const who = await caller(req);
+  if (!who) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const id = req.nextUrl.searchParams.get('invoiceId') || '';
   const ref = id ? getFirestore(adminApp).doc(`invoices/${id}`) : null;
   const snap = ref ? await ref.get() : null;
@@ -72,7 +76,7 @@ export async function GET(req: NextRequest) {
     return e;
   }));
   if (changed) await ref!.update({ sendLog: fresh });
-  const def = await recipientOf(inv);
+  const def = await recipientOf(inv, who.uid);
   return NextResponse.json({ to: def.to, why: def.why, options: def.options, emailConfigured: emailConfigured(), sendLog: fresh, cooldownMinutes: RESEND_COOLDOWN_MIN });
 }
 
@@ -108,7 +112,7 @@ export async function POST(req: NextRequest) {
 
   // One or more addresses (string or list); none given → the client's billing email.
   const picked = cleanRecipients(body.to);
-  const recipients = picked.length ? picked : cleanRecipients((await recipientOf(inv)).to);
+  const recipients = picked.length ? picked : cleanRecipients((await recipientOf(inv, who.uid)).to);
   const to = recipients.join(', ');
   const token: string = inv.publicToken || randomBytes(24).toString('hex');
   const link = `${await publicOrigin(req)}/public/invoice/${token}`;

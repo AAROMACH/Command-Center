@@ -775,6 +775,13 @@ export default function DirectoryPersonPage() {
                   </h3>
                   <div className="space-y-2.5">
                     <div>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Account manager</p>
+                      <p className="text-[12px] text-text-primary">{person.accountManager?.name || 'Nobody yet'}</p>
+                      {person.accountManager?.name && (
+                        <p className="text-[11px] text-text-muted">Shown in their portal so they know who to ask.</p>
+                      )}
+                    </div>
+                    <div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billing Contact</p>
                       <p className="text-[12px] text-text-primary">{person.billingDetails?.contactName || '—'}</p>
                     </div>

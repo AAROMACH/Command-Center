@@ -32,6 +32,8 @@ import Link from 'next/link';
 import { jobDateTimeValue, mergeJobs } from '@/lib/jobs';
 import { money } from '@/lib/financial-summary';
 import { paymentTermsLabel, normalizeTerms } from '@/lib/quote-deposit';
+import { useAuth } from '@/contexts/auth-context';
+import { StaffPicker } from '@/components/staff-picker';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -61,6 +63,8 @@ const CONTACT_TYPE_LABELS: Record<string, string> = {
 export default function ClientWorkspacePage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
+    const { user: me } = useAuth();
+    const meId = me?.id || '';
 
     const [client, setClient] = useState<Technician | null>(null);
     const [sites, setSites] = useState<Site[]>([]);
@@ -84,7 +88,7 @@ export default function ClientWorkspacePage() {
 
     // Contact form
     const [contactOpen, setContactOpen] = useState(false);
-    const [contactForm, setContactForm] = useState({ name: '', title: '', phone: '', email: '', contactType: 'main', siteId: '', notes: '' });
+    const [contactForm, setContactForm] = useState({ name: '', title: '', phone: '', email: '', contactType: 'main', siteId: '', notes: '', ownerId: '', ownerName: '' });
     const [contactSaving, setContactSaving] = useState(false);
     const [contactFilter, setContactFilter] = useState<string>('all');
 
@@ -174,8 +178,9 @@ export default function ClientWorkspacePage() {
 
     const filteredContacts = useMemo(() => {
         if (contactFilter === 'all') return contacts;
+        if (contactFilter === 'mine') return contacts.filter(c => c.ownerId && c.ownerId === meId);
         return contacts.filter(c => c.contactType === contactFilter);
-    }, [contacts, contactFilter]);
+    }, [contacts, contactFilter, meId]);
 
     const filteredJobs = useMemo(() => {
         if (jobsStatusFilter === 'all') return clientWOs;
@@ -224,7 +229,7 @@ export default function ClientWorkspacePage() {
                 createdAt: new Date().toISOString(),
             });
             setContactOpen(false);
-            setContactForm({ name: '', title: '', phone: '', email: '', contactType: 'main', siteId: '', notes: '' });
+            setContactForm({ name: '', title: '', phone: '', email: '', contactType: 'main', siteId: '', notes: '', ownerId: '', ownerName: '' });
         } finally {
             setContactSaving(false);
         }
@@ -352,7 +357,7 @@ export default function ClientWorkspacePage() {
                     </div>
                     {client.billingDetails && (
                         <p className="text-[11px] text-text-muted">
-                            Billing: {paymentTermsLabel(normalizeTerms(client.billingDetails.terms))}
+                            Billing: {paymentTermsLabel(normalizeTerms(client.billingDetails.terms))}{client.accountManager?.name ? ` · Account manager: ${client.accountManager.name}` : ''}
                         </p>
                     )}
                 </div>
@@ -502,7 +507,7 @@ export default function ClientWorkspacePage() {
                 <TabsContent value="contacts" className="m-0">
                     <div className="flex items-center justify-between mb-4 gap-3">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            {['all', 'main', 'billing', 'site', 'emergency', 'decision_maker'].map(f => (
+                            {['all', 'mine', 'main', 'billing', 'accounts_payable', 'site', 'emergency', 'decision_maker'].map(f => (
                                 <button
                                     key={f}
                                     onClick={() => setContactFilter(f)}
@@ -512,7 +517,7 @@ export default function ClientWorkspacePage() {
                                             : 'bg-bg-primary text-text-muted border-border-sub hover:border-border-main'
                                     )}
                                 >
-                                    {f === 'all' ? 'All' : CONTACT_TYPE_LABELS[f] || f}
+                                    {f === 'all' ? 'All' : f === 'mine' ? 'Mine' : CONTACT_TYPE_LABELS[f] || f}
                                 </button>
                             ))}
                         </div>
@@ -531,6 +536,7 @@ export default function ClientWorkspacePage() {
                                         <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Type</TableHead>
                                         <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Our contact</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -547,6 +553,9 @@ export default function ClientWorkspacePage() {
                                             </TableCell>
                                             <TableCell className="text-[11px] text-text-muted">
                                                 {c.siteId ? clientSites.find(s => s.id === c.siteId)?.name || c.siteId : '—'}
+                                            </TableCell>
+                                            <TableCell className="text-[11px] text-text-muted">
+                                                {c.ownerId === meId ? <span className="font-semibold text-text-primary">You</span> : c.ownerName || '—'}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -922,6 +931,15 @@ export default function ClientWorkspacePage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Our contact</Label>
+                                <StaffPicker
+                                    value={contactForm.ownerId}
+                                    onChange={(ownerId, staff) => setContactForm(f => ({ ...f, ownerId, ownerName: staff?.name || '' }))}
+                                    className="h-9 text-[11px] bg-bg-secondary border-border-main"
+                                    noneLabel="Nobody in particular"
+                                />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site (optional)</Label>

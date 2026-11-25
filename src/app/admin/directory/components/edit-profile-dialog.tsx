@@ -31,6 +31,7 @@ import {
 } from '@/lib/client-contacts';
 import { cn } from '@/lib/utils';
 import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS, normalizeTerms } from '@/lib/quote-deposit';
+import { StaffPicker, staffBrief } from '@/components/staff-picker';
 import {
   User, Phone, Mail, MapPin, Briefcase, Shield, Heart,
   FileText, Plus, X, Building2, DollarSign, Loader2, Globe,
@@ -123,6 +124,8 @@ type FormState = {
   billingContactId: string;
   quoteContactId: string;
   billingTerms: string;
+  /** Which of our people owns this client relationship. */
+  accountManagerId: string;
   customerDisplayName: string;
   billingAddress: string;
   /** '' = not decided yet. */
@@ -171,6 +174,7 @@ function personToForm(p: Technician): FormState {
     billingContactId: p.billingContactId || '',
     quoteContactId: p.quoteContactId || '',
     billingTerms: normalizeTerms(p.billingDetails?.terms) || DEFAULT_PAYMENT_TERMS,
+    accountManagerId: p.accountManagerId || '',
     customerDisplayName: p.accounting?.customerDisplayName || '',
     billingAddress: p.accounting?.billingAddress || '',
     taxStatus: p.accounting?.taxExempt === true ? 'exempt' : p.accounting?.taxExempt === false ? 'taxable' : '',
@@ -212,6 +216,10 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
       setCertInput('');
     }
   }, [open, person]);
+
+  // The staff member picked as account manager, for the stored snapshot.
+  const [accountManager, setAccountManager] = useState<Technician | null>(null);
+  useEffect(() => { if (open) setAccountManager(null); }, [open]);
 
   // The client's own contacts, for "who do invoices / quotes go to".
   // Admin-only in firestore.rules, which is who opens this dialog.
@@ -361,6 +369,11 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
           // billingEmail, so write both or this screen's value is ignored
           // (see clientBillingEmail in lib/recipients).
           billingEmail: form.billingEmail.trim() || null,
+          accountManagerId: form.accountManagerId || null,
+          // The client can only read their own user doc, so their portal
+          // needs this copy of our person's details, not just the id. The
+          // picker re-resolves it, so each save refreshes a changed phone.
+          accountManager: form.accountManagerId && accountManager ? staffBrief(accountManager) : null,
           billingContactId: form.billingContactId || null,
           quoteContactId: form.quoteContactId || null,
           'accounting.customerDisplayName': orNull(form.customerDisplayName),
@@ -832,6 +845,19 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Label className={labelCls}>Business Type</Label>
                       <Input className={inputCls} value={form.businessType} onChange={e => set('businessType', e.target.value)} placeholder="e.g. Retail, Healthcare" />
                     </div>
+                  </div>
+                  <div className="border-t border-border-sub pt-3 space-y-1">
+                    <Label className={labelCls}>Account manager</Label>
+                    <StaffPicker
+                      value={form.accountManagerId}
+                      onChange={(id, staff) => { set('accountManagerId', id); setAccountManager(staff); }}
+                      onResolve={setAccountManager}
+                      className={inputCls}
+                      noneLabel="Nobody yet"
+                    />
+                    <p className="text-[11px] text-text-muted">
+                      Our point of contact for this client. Shown in their portal with your name, email and phone, so they know who to ask.
+                    </p>
                   </div>
                   <div className="border-t border-border-sub pt-3">
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Billing Details</p>

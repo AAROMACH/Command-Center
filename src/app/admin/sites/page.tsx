@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { jobDateTimeValue, mergeJobs } from '@/lib/jobs';
 import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS } from '@/lib/quote-deposit';
+import { useAuth } from '@/contexts/auth-context';
+import { staffBrief } from '@/components/staff-picker';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -44,6 +46,7 @@ const ACCOUNT_STATUS_OPTIONS = [
 
 export default function AdminClientsPage() {
     const router = useRouter();
+    const { user: me } = useAuth();
     const [clients, setClients] = useState<Technician[]>([]);
     const [sites, setSites] = useState<Site[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -158,6 +161,8 @@ export default function AdminClientsPage() {
                 phone: form.phone,
                 roles: ['client'],
                 role: 'client',
+                // Whoever added them is their contact here until changed.
+                ...(me ? { accountManagerId: me.id, accountManager: staffBrief(me) } : {}),
                 accountStatus: form.accountStatus,
                 billingDetails: {
                     contactName: form.name,

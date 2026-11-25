@@ -39,6 +39,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { jobDateTimeValue } from '@/lib/jobs';
+import { AccountManagerCard } from '@/components/account-manager-card';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -227,6 +228,8 @@ export default function ClientDashboardPage() {
                     ))}
                 </div>
             )}
+
+            <AccountManagerCard client={currentUser} />
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <StatCard label="Active projects" icon={Briefcase} value={myProjects.filter(p => p.status === 'active').length} />

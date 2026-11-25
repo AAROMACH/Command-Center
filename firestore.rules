@@ -241,6 +241,7 @@ service cloud.firestore {
               && request.auth.uid == userId
               && request.resource.data.approvalStatus == 'pending'
               && !request.resource.data.keys().hasAny(['role', 'clientCompany', 'clientId', 'companyId',
+                    'accountManagerId', 'accountManager', 'billingContactId', 'quoteContactId',
                     'portalAccess', 'primaryPortal', 'permissionOverrides',
                     'messagingAllowedRoles', 'messagingBlockedClientIds', 'hourlyRate', 'payRate',
                     'payoutPreferences', 'accounting'])
@@ -257,6 +258,11 @@ service cloud.firestore {
                             // clientCompany scopes a client's invoices, requests and
                             // project threads; the messaging fields are admin-set limits.
                             'clientCompany', 'clientId', 'companyId',
+                            // Who at Aaromach owns this client, and the copy of
+                            // their details the client's portal shows.
+                            'accountManagerId', 'accountManager',
+                            // Which of their contacts invoices and quotes go to.
+                            'billingContactId', 'quoteContactId',
                             'messagingAllowedRoles', 'messagingBlockedClientIds',
                             'payRate', 'payType', 'currentWorkload',
                             // Mirrored from subscriptions by billing staff.

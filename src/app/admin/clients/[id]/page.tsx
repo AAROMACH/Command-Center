@@ -31,6 +31,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import Link from 'next/link';
 import { jobDateTimeValue, mergeJobs } from '@/lib/jobs';
 import { money } from '@/lib/financial-summary';
+import { paymentTermsLabel, normalizeTerms } from '@/lib/quote-deposit';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -351,7 +352,7 @@ export default function ClientWorkspacePage() {
                     </div>
                     {client.billingDetails && (
                         <p className="text-[11px] text-text-muted">
-                            Billing: {client.billingDetails.terms} · {client.billingDetails.deliveryMethod}
+                            Billing: {paymentTermsLabel(normalizeTerms(client.billingDetails.terms))}
                         </p>
                     )}
                 </div>

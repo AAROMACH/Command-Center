@@ -44,6 +44,7 @@ import { TONE_BADGE, statusLabel, type Tone } from '@/lib/status-styles';
 import { AccountStatusBadge, accountStatusLabel } from '@/app/admin/clients/account-status';
 import { clientBillingEmail } from '@/lib/recipients';
 import { resolveRecipient, DOC_KIND_LABEL, type DocKind } from '@/lib/client-contacts';
+import { paymentTermsLabel, normalizeTerms } from '@/lib/quote-deposit';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -799,11 +800,7 @@ export default function DirectoryPersonPage() {
                     })}
                     <div>
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Payment Terms</p>
-                      <p className="text-[12px] text-text-primary">{person.billingDetails?.terms || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Invoice Delivery</p>
-                      <p className="text-[12px] text-text-primary">{person.billingDetails?.deliveryMethod || '—'}</p>
+                      <p className="text-[12px] text-text-primary">{person.billingDetails?.terms ? paymentTermsLabel(normalizeTerms(person.billingDetails.terms)) : '—'}</p>
                     </div>
                   </div>
                 </div>

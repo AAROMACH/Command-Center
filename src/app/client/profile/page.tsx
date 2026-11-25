@@ -33,6 +33,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/empty-state';
+import { paymentTermsLabel } from '@/lib/quote-deposit';
 
 export default function ClientProfilePage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -45,7 +46,6 @@ export default function ClientProfilePage() {
     const [billingContactName, setBillingContactName] = useState("");
     const [billingEmail, setBillingEmail] = useState("");
     const [billingTerms, setBillingTerms] = useState("Net 30");
-    const [billingDelivery, setBillingDelivery] = useState("Portal");
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -75,14 +75,12 @@ export default function ClientProfilePage() {
                     // as an explicit billing address on the next save.
                     setBillingEmail(data.billingEmail || data.billingDetails?.email || '');
                     setBillingTerms(data.billingDetails?.terms || '');
-                    setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
                     savedSnapshotRef.current = {
                         name: data.name || '',
                         preferredName: data.preferredName || '',
                         phone: data.phone || '',
                         'billingDetails.contactName': data.billingDetails?.contactName || '',
                         'billingDetails.email': data.billingDetails?.email || '',
-                        'billingDetails.deliveryMethod': data.billingDetails?.deliveryMethod || 'Portal',
                         billingEmail: data.billingEmail || null,
                     };
                 }
@@ -125,7 +123,6 @@ export default function ClientProfilePage() {
                 phone,
                 'billingDetails.contactName': billingContactName,
                 'billingDetails.email': billingEmail,
-                'billingDetails.deliveryMethod': billingDelivery,
                 // Invoice/quote sends and the QuickBooks customer read top-level
                 // billingEmail, so write both or this field is ignored
                 // (see clientBillingEmail in lib/recipients).
@@ -296,21 +293,8 @@ export default function ClientProfilePage() {
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[12px] font-medium text-text-secondary">Payment terms</Label>
-                                            <Input value={billingTerms || 'Not set'} readOnly disabled className="bg-bg-primary" />
+                                            <Input value={billingTerms ? paymentTermsLabel(billingTerms) : 'Not set'} readOnly disabled className="bg-bg-primary" />
                                             <p className="text-[11px] text-text-muted">Set by Aaromach. Contact us to change your terms.</p>
-                                        </div>
-                                        <div className="space-y-2 text-left">
-                                            <Label className="text-[12px] font-medium text-text-secondary">Invoice delivery</Label>
-                                            <Select value={billingDelivery} onValueChange={setBillingDelivery}>
-                                                <SelectTrigger className="bg-bg-primary">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Email">Email only</SelectItem>
-                                                    <SelectItem value="Portal">Portal only</SelectItem>
-                                                    <SelectItem value="Both">Email and portal</SelectItem>
-                                                </SelectContent>
-                                            </Select>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -329,7 +313,7 @@ export default function ClientProfilePage() {
                                             <CreditCard size={18} />
                                         </div>
                                         <div className="text-left space-y-0.5">
-                                            <p className="text-[13px] font-semibold text-text-primary">{billingTerms || 'Net 30'} terms</p>
+                                            <p className="text-[13px] font-semibold text-text-primary">{paymentTermsLabel(billingTerms)} terms</p>
                                             <p className="text-[12px] text-text-muted">Pay by ACH, EFT or certified check. Payment instructions are on each invoice.</p>
                                         </div>
                                     </div>

@@ -27,6 +27,35 @@ export const DEFAULT_PAYMENT_TERMS = 'net_30';
 export const paymentTermsLabel = (v?: string | null) => PAYMENT_TERMS.find(t => t.value === v)?.label || 'Net 30';
 export const paymentTermsDays = (v?: string | null) => PAYMENT_TERMS.find(t => t.value === v)?.days ?? 30;
 
+/**
+ * A terms value from anywhere, as a PAYMENT_TERMS value — or null when there
+ * is nothing on file.
+ *
+ * Client records used to store the label ("Net 30", "Due on Receipt") while
+ * quotes and invoices stored the value ("net_30"), which is why a client's
+ * agreed terms never connected to their invoices. Both are accepted on read
+ * so existing client records keep working; everything writes the value now.
+ */
+export function normalizeTerms(v?: string | null): string | null {
+  const raw = String(v ?? '').trim();
+  if (!raw) return null;
+  if (PAYMENT_TERMS.some(t => t.value === raw)) return raw;
+  const slug = raw.toLowerCase().replace(/[\s-]+/g, '_');
+  return PAYMENT_TERMS.find(t => t.value === slug || t.label.toLowerCase() === raw.toLowerCase())?.value ?? null;
+}
+
+/** The payment terms on a client record, as a PAYMENT_TERMS value. */
+export function clientTerms(client?: { billingDetails?: { terms?: string | null } | null } | null): string | null {
+  return normalizeTerms(client?.billingDetails?.terms);
+}
+
+/** issueDate + the term's days, as YYYY-MM-DD. */
+export function dueDateFor(issueDate: string, terms?: string | null): string {
+  const base = Date.parse(`${String(issueDate || '').slice(0, 10)}T12:00:00`);
+  const from = Number.isNaN(base) ? Date.now() : base;
+  return new Date(from + paymentTermsDays(terms) * 86_400_000).toISOString().slice(0, 10);
+}
+
 /** Deposit choices (percent of the quote total). 0 = no deposit. */
 export const DEPOSIT_PERCENTS = [0, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
 

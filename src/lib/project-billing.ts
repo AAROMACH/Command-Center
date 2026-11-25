@@ -4,7 +4,7 @@ import { db } from './firebase';
 import { createDocId } from './generateId';
 import { docNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
-import { depositCreditLine, paymentTermsDays, selectedAddOnLines } from './quote-deposit';
+import { clientTerms, depositCreditLine, dueDateFor, normalizeTerms, selectedAddOnLines } from './quote-deposit';
 import { fromQuoteLines, materialPrice, priceTotals, toInvoiceLines, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { quoteEstimate } from './project-economics';
 import { roundCents, type PricingSettings } from './billing';
@@ -127,6 +127,13 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
   const t = priceTotals(lines, discount, pricing.salesTaxPct);
   const id = await createDocId(ID_PREFIXES.INVOICE);
   const today = new Date();
+  // The quote's terms if it has them, else the client's agreed terms.
+  const clientId = quote?.clientId || (project as unknown as { clientId?: string }).clientId || '';
+  let terms = normalizeTerms(quote?.paymentTerms);
+  if (!terms && clientId) {
+    const c = await getDoc(doc(db, 'users', clientId));
+    if (c.exists()) terms = clientTerms(c.data() as { billingDetails?: { terms?: string | null } });
+  }
   const invoice: Invoice = {
     id,
     invoiceNumber: docNumber(id, today),
@@ -135,13 +142,13 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
     customerEmail: quote?.customerType === 'external_customer' ? (quote.customerEmail || null) : null,
     projectId: project.id,
     issueDate: today.toISOString().slice(0, 10),
-    dueDate: new Date(today.getTime() + paymentTermsDays(quote?.paymentTerms) * 86400000).toISOString().slice(0, 10),
+    dueDate: dueDateFor(today.toISOString().slice(0, 10), terms),
     status: 'draft',
     lineItems: toInvoiceLines(lines),
     notes: quote?.terms || `Project: ${project.name}`,
     subtotal: t.subtotal, discountAmount: t.discountAmount, planDiscount: discount, tax: t.taxAmount, total: t.total,
     quoteId: quote?.id || null,
-    paymentTerms: quote?.paymentTerms || null,
+    paymentTerms: terms,
   };
   await setDoc(doc(db, 'invoices', id), JSON.parse(JSON.stringify(invoice)));
   await updateDoc(doc(db, 'projects', project.id), { invoiceId: id, updatedAt: new Date().toISOString() });

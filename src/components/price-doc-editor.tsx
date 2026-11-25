@@ -1,6 +1,6 @@
 'use client';
 
-import { DEFAULT_PAYMENT_TERMS, DEPOSIT_PERCENTS, PAYMENT_TERMS, depositAmountFor, paymentTermsLabel } from '@/lib/quote-deposit';
+import { DEFAULT_PAYMENT_TERMS, DEPOSIT_PERCENTS, PAYMENT_TERMS, clientTerms, depositAmountFor, dueDateFor, paymentTermsLabel } from '@/lib/quote-deposit';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -227,7 +227,19 @@ export function PriceDocEditor({
   const taxPct = kind === 'quote' ? 0 : settings.salesTaxPct;
   const totals = useMemo(() => priceTotals(v.lines, discount, taxPct), [v.lines, discount, taxPct]);
 
-  const pickClient = (id: string) => { set('clientId', id); setDiscountMode('auto'); };
+  const pickClient = (id: string) => {
+    setDiscountMode('auto');
+    // A client's agreed payment terms set the due date, instead of every
+    // invoice starting at Net 30 and being corrected by hand. Only on a new
+    // invoice, and only when the client has terms on file — an existing
+    // invoice keeps the dates it was saved with.
+    const terms = isNewInvoice ? clientTerms(clients.find(c => c.id === id)) : null;
+    setV(prev => ({
+      ...prev,
+      clientId: id,
+      ...(terms ? { paymentTerms: terms, dueDate: dueDateFor(prev.issueDate, terms) } : {}),
+    }));
+  };
 
   // ── Lines ──
   const addLine = (section: PriceSection, from?: PriceBookItem) => setV(p => ({

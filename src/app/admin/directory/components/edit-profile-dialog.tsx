@@ -30,6 +30,7 @@ import {
   CONTACT_TYPE_LABELS, DOC_KIND_LABEL, defaultContactFor, rankedContactsFor, type DocKind,
 } from '@/lib/client-contacts';
 import { cn } from '@/lib/utils';
+import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS, normalizeTerms } from '@/lib/quote-deposit';
 import {
   User, Phone, Mail, MapPin, Briefcase, Shield, Heart,
   FileText, Plus, X, Building2, DollarSign, Loader2, Globe,
@@ -122,7 +123,6 @@ type FormState = {
   billingContactId: string;
   quoteContactId: string;
   billingTerms: string;
-  billingDelivery: string;
   customerDisplayName: string;
   billingAddress: string;
   /** '' = not decided yet. */
@@ -170,8 +170,7 @@ function personToForm(p: Technician): FormState {
     billingEmail: p.billingEmail || p.billingDetails?.email || '',
     billingContactId: p.billingContactId || '',
     quoteContactId: p.quoteContactId || '',
-    billingTerms: p.billingDetails?.terms || 'Net 30',
-    billingDelivery: p.billingDetails?.deliveryMethod || 'Portal',
+    billingTerms: normalizeTerms(p.billingDetails?.terms) || DEFAULT_PAYMENT_TERMS,
     customerDisplayName: p.accounting?.customerDisplayName || '',
     billingAddress: p.accounting?.billingAddress || '',
     taxStatus: p.accounting?.taxExempt === true ? 'exempt' : p.accounting?.taxExempt === false ? 'taxable' : '',
@@ -357,7 +356,6 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
             contactName: form.billingContactName.trim(),
             email: form.billingEmail.trim(),
             terms: form.billingTerms,
-            deliveryMethod: form.billingDelivery,
           },
           // Invoice/quote sends and the QuickBooks customer read top-level
           // billingEmail, so write both or this screen's value is ignored
@@ -895,22 +893,12 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Select value={form.billingTerms} onValueChange={v => set('billingTerms', v)}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              {['Net 15', 'Net 30', 'Net 60', 'Due on Receipt'].map(t => (
-                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              {PAYMENT_TERMS.map(t => (
+                                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className={labelCls}>Invoice Delivery</Label>
-                          <Select value={form.billingDelivery} onValueChange={v => set('billingDelivery', v)}>
-                            <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="Email">Email</SelectItem>
-                              <SelectItem value="Portal">Portal</SelectItem>
-                              <SelectItem value="Both">Email &amp; Portal</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <p className="text-[11px] text-text-muted">Sets the due date on their new invoices.</p>
                         </div>
                       </div>
                     </div>

@@ -261,9 +261,18 @@ export type Technician = {
   quoteContactId?: string | null;
   billingDetails?: {
     contactName: string;
+    /** Read through clientBillingEmail() in lib/recipients, never on its own. */
     email: string;
-    terms: 'Net 15' | 'Net 30' | 'Net 60' | 'Due on Receipt' | string;
-    deliveryMethod: 'Email' | 'Portal' | 'Both' | string;
+    /** A PAYMENT_TERMS value ('net_30'). Older records hold the label
+     *  ('Net 30') — read through normalizeTerms() in lib/quote-deposit. */
+    terms: string;
+    /** @deprecated Nothing ever read it, so a client set to "Portal" still got
+     *  invoice emails. Removed from the editors rather than honoured: it
+     *  defaulted to 'Portal' when unset, so honouring it would have silently
+     *  stopped invoice emails for every client who never chose Email. The
+     *  portal lists every invoice regardless, and recipients are chosen per
+     *  send. Retained only so existing documents type-check on read. */
+    deliveryMethod?: 'Email' | 'Portal' | 'Both' | string;
   };
   notificationPreferences?: NotificationPreferences;
   permissionOverrides?: Record<string, boolean>;

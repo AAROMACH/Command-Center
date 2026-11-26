@@ -290,10 +290,14 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                 className={cn("job-card !mb-0 cursor-pointer group hover:border-border-main", { 'active': wo.status === 'in-progress'})}
                                 onClick={() => handleCardClick(wo)}
                             >
-                                <div className="job-card-inner">
+                                <div className="job-card-inner min-w-0">
                                     <div className={cn("job-accent", { 'active-accent': wo.status === 'in-progress' })}></div>
-                                    <div className="job-body !p-3">
-                                        <div className="job-left text-left">
+                                    {/* Phones stack: details, then a full-width action. The row
+                                        layout pushed Check in past the right edge on a long
+                                        title or client name, and the card clips its overflow,
+                                        so the button was unreachable instead of just tight. */}
+                                    <div className="job-body !p-3 min-w-0 !flex-col !items-stretch sm:!flex-row sm:!items-center">
+                                        <div className="job-left text-left min-w-0 w-full">
                                             <div className="flex items-center gap-2 mb-1 w-full justify-start text-left">
                                                 <Badge variant="outline" className="text-[10px] uppercase tracking-wide px-1.5 bg-bg-tertiary">
                                                     {wo.projectType === 'Project' ? <Briefcase size={10} className="mr-1"/> : <Wrench size={10} className="mr-1"/>}
@@ -306,27 +310,27 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                             </div>
                                             <div className="job-meta !gap-x-3 !gap-y-1 flex-wrap !justify-start text-left">
                                                 <div className="job-meta-item !text-[12px] text-left font-medium text-text-secondary"><CalendarIcon size={11} className="text-brand-blue"/> {(() => { const d = parseTacticalDate(wo.scheduleDate); return d ? format(d, 'EEE, MMM d') : (wo.scheduleDate || 'TBD'); })()}</div>
-                                                <div className="job-meta-item !text-[12px] text-left"><Building2 size={11} className="text-text-muted"/> {wo.clientName}</div>
+                                                <div className="job-meta-item !text-[12px] text-left min-w-0 max-w-full"><Building2 size={11} className="text-text-muted"/> <span className="truncate">{wo.clientName}</span></div>
                                                 <div className="job-meta-item !text-[12px] text-left"><Clock size={11} className="text-accent-gold"/> {wo.scheduleTime}</div>
-                                                <div className="job-meta-item !text-[12px] text-left"><MapPin size={11} className="text-brand-red"/> {formatCityState(wo.location)}</div>
+                                                <div className="job-meta-item !text-[12px] text-left min-w-0 max-w-full"><MapPin size={11} className="text-brand-red"/> <span className="truncate">{formatCityState(wo.location)}</span></div>
                                             </div>
                                         </div>
-                                        <div className="job-right shrink-0">
+                                        <div className="job-right shrink-0 w-full sm:w-auto mt-2.5 sm:mt-0 pt-2.5 sm:pt-0 border-t border-border-sub sm:border-t-0">
                                             {wo.status === 'completed' ? (
-                                                <div className="text-[12px] font-semibold text-text-green flex items-center gap-1"><CircleCheck size={14}/> Done</div>
+                                                <div className="flex h-11 items-center justify-center gap-1 text-[12px] font-semibold text-text-green sm:h-auto sm:justify-start"><CircleCheck size={14}/> Done</div>
                                             ) : wo.status === 'in-progress' ? (
                                                 isImported(wo) ? (
-                                                    <button className="h-10 px-3 rounded-md bg-text-green text-white text-[13px] font-medium hover:bg-text-green/90" onClick={(e) => handleComplete(e, wo.id)}>
+                                                    <button className="h-11 w-full sm:h-10 sm:w-auto px-3 rounded-md bg-text-green text-white text-[13px] font-medium hover:bg-text-green/90" onClick={(e) => handleComplete(e, wo.id)}>
                                                         Complete
                                                     </button>
                                                 ) : (
-                                                    <button className="h-10 px-3 rounded-md bg-bg-primary border border-border-main text-[13px] text-text-red font-medium hover:bg-brand-red-dim" onClick={(e) => handleCheckOut(e, wo.id)}>
+                                                    <button className="h-11 w-full sm:h-10 sm:w-auto px-3 rounded-md bg-bg-primary border border-border-main text-[13px] text-text-red font-medium hover:bg-brand-red-dim" onClick={(e) => handleCheckOut(e, wo.id)}>
                                                         Check out
                                                     </button>
                                                 )
                                             ) : (
                                                 <button 
-                                                    className="h-10 px-3 rounded-md bg-brand-red text-white text-[13px] font-medium hover:bg-brand-red-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="h-11 w-full sm:h-10 sm:w-auto px-3 rounded-md bg-brand-red text-white text-[13px] font-medium hover:bg-brand-red-hover disabled:opacity-50 disabled:cursor-not-allowed"
                                                     disabled={!!activeSession}
                                                     onClick={(e) => handleCheckIn(e, wo.id)}
                                                 >

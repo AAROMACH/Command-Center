@@ -195,7 +195,9 @@ export default function TechDashboardPage() {
     }
 
     return (
-        <div className="space-y-5">
+        // pb-24: the floating help button sits bottom-right and covered the
+        // last job card's Check in.
+        <div className="space-y-5 pb-24">
             <PageHeader
                 eyebrow="Tech portal"
                 icon={Activity}

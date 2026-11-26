@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isAfter, isToday } from 'date-fns';
@@ -22,6 +23,11 @@ import {
   CATEGORIES, SORT_OPTIONS, categoryForTitle, categoryStyle, countByCategory, sortNotifications,
   type NotificationCategory, type NotificationSort,
 } from '@/lib/notification-categories';
+
+/** How far back the bell keeps history, and a ceiling so a busy account
+ *  never renders thousands of rows at once. */
+const HISTORY_DAYS = 30;
+const HISTORY_MAX = 500;
 
 /**
  * `compact`: the small icon used in the top bar on every page (no latest-alert
@@ -53,11 +59,14 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
     return onSnapshot(q, (snap) => {
       const mine = snap.docs.map(d => d.data())
         .filter(n => n.type === 'push' && notificationPortals(n).includes(portal));
-      const cutoff = Date.now() - 30 * 86_400_000;
+      const cutoff = Date.now() - HISTORY_DAYS * 86_400_000;
       setRecent(mine
         .filter(n => new Date(n.timestamp).getTime() >= cutoff)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 30)
+        // The whole window, not the newest 30: a 30-item cap here meant
+        // filtering to one kind searched only those 30 and came back empty
+        // even when that kind had plenty in the last 30 days.
+        .slice(0, HISTORY_MAX)
         .map(n => ({
           id: String(n.id), title: String(n.title || '').replace(/^\[AAROMACH\]\s*/, ''), body: String(n.body || ''),
           timestamp: n.timestamp, read: !!n.read, href: entityHref(portal, n.relatedEntityType, n.relatedEntityId),
@@ -87,11 +96,18 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
   // alerts ("just the pay ones") without wading through the rest.
   const [cats, setCats] = useState<Set<NotificationCategory>>(new Set());
   const [panel, setPanel] = useState<'sort' | 'filter' | null>(null);
+  // The roomy history view — the popover is too narrow to read 30 days in.
+  const [historyOpen, setHistoryOpen] = useState(false);
   useEffect(() => {
     if (!open) { setShowAll(false); setView('unread'); setPanel(null); setCats(new Set()); setSort('newest'); }
   }, [open]);
   // "Unread first" means nothing on a list that is only unread.
   useEffect(() => { if (view === 'unread' && sort === 'unread') setSort('newest'); }, [view, sort]);
+
+  const openAlert = (n: { id: string; read: boolean; href: string | null }) => {
+    if (!n.read) updateDoc(doc(db, 'notifications', n.id), { read: true }).catch(() => {});
+    if (n.href) { setOpen(false); setHistoryOpen(false); router.push(n.href); }
+  };
 
   const toggleCat = (id: NotificationCategory) => setCats(prev => {
     const next = new Set(prev);
@@ -231,6 +247,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
   // panel always says how many of each kind there are to switch to.
   const counts = useMemo(() => countByCategory(view === 'recent' ? recent : tagged), [recent, tagged, view]);
   const sortLabel = SORT_OPTIONS.find(o => o.id === sort)?.label || 'Newest first';
+  const historyCounts = useMemo(() => countByCategory(recent), [recent]);
   // Narrowing to a kind is itself a request to see them all.
   const expanded = showAll || cats.size > 0;
 
@@ -395,32 +412,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
                         {recent.length ? 'Nothing of these kinds in the last 30 days.' : 'Nothing in the last 30 days.'}
                     </p>
                 ) : shownRecent.map(n => (
-                    <button key={n.id} type="button"
-                        onClick={() => {
-                            if (!n.read) updateDoc(doc(db, 'notifications', n.id), { read: true }).catch(() => {});
-                            if (n.href) { setOpen(false); router.push(n.href); }
-                        }}
-                        className={cn('w-full flex gap-3 px-4 py-2.5 text-left hover:bg-bg-tertiary/50', n.href ? 'cursor-pointer' : 'cursor-default')}>
-                        {(() => {
-                            const c = categoryStyle(n.category);
-                            return (
-                                <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border', c.tile, n.read && 'opacity-60')}
-                                    title={c.label} aria-label={c.label}>
-                                    <c.Icon size={13} />
-                                </span>
-                            );
-                        })()}
-                        <span className="min-w-0 flex-1">
-                            <span className="flex items-baseline justify-between gap-2">
-                                <span className="flex min-w-0 items-center gap-1.5">
-                                    {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-red" aria-label="Unread" />}
-                                    <span className={cn('text-[13px] leading-tight line-clamp-1', n.read ? 'text-text-secondary' : 'font-semibold text-text-primary')}>{n.title}</span>
-                                </span>
-                                <span className="shrink-0 text-[11px] text-text-muted">{stampLabel(n.timestamp)}</span>
-                            </span>
-                            <span className="block text-[12px] text-text-muted line-clamp-2">{n.body}</span>
-                        </span>
-                    </button>
+                    <AlertRow key={n.id} n={n} onOpen={openAlert} />
                 ))}
             </div>
         ) : (<>
@@ -504,9 +496,111 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
             </div>
         )}
         </>)}
+        {/* The popover is too narrow to read a month in — this opens the roomy one. */}
+        <div className="border-t border-border-sub px-4 py-2 text-center">
+          <button type="button" onClick={() => { setPanel(null); setOpen(false); setHistoryOpen(true); }}
+              className="text-[12px] font-medium text-brand-red hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red rounded-sm">
+            See all {HISTORY_DAYS} days{recent.length ? ` (${recent.length})` : ''}
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
+
+    {/* Full history: scrollable, filterable, the last 30 days. */}
+    <Dialog open={historyOpen} onOpenChange={o => { setHistoryOpen(o); if (!o) { setCats(new Set()); setSort('newest'); } }}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-2xl">
+        <DialogHeader className="px-5 pb-3 pt-5 text-left">
+          <DialogTitle>Notifications</DialogTitle>
+          <DialogDescription>
+            Everything from the last {HISTORY_DAYS} days. Older alerts drop off.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2.5 border-y border-border-sub bg-bg-secondary/40 px-5 py-3">
+          {/* Room for the kinds to sit out in the open here, no pop-up needed. */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button type="button" onClick={() => setCats(new Set())}
+                className={cn('inline-flex h-8 items-center rounded-full border px-2.5 text-[11px] font-medium transition-colors',
+                  cats.size === 0 ? 'border-brand-red bg-brand-red text-white' : 'border-border-sub text-text-muted hover:text-text-primary')}>
+              All {recent.length ? `· ${recent.length}` : ''}
+            </button>
+            {CATEGORIES.map(c => {
+              const n = historyCounts[c.id] || 0;
+              const on = cats.has(c.id);
+              return (
+                <button key={c.id} type="button" onClick={() => toggleCat(c.id)} disabled={!n && !on}
+                    aria-pressed={on}
+                    className={cn('inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors disabled:opacity-40',
+                      on ? c.chip : 'border-border-sub text-text-muted hover:text-text-primary')}>
+                  <c.Icon size={12} /> {c.label} {n ? `· ${n}` : ''}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Sort</span>
+            {SORT_OPTIONS.map(o => (
+              <button key={o.id} type="button" onClick={() => setSort(o.id)}
+                  className={cn('inline-flex h-8 items-center rounded-md border px-2.5 text-[11px] font-medium transition-colors',
+                    sort === o.id ? 'border-brand-red/40 bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted hover:text-text-primary')}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 divide-y divide-border-sub overflow-y-auto overscroll-contain">
+          {shownRecent.length === 0 ? (
+            <p className="px-6 py-16 text-center text-[13px] text-text-muted">
+              {recent.length ? 'Nothing of these kinds in the last 30 days.' : `Nothing in the last ${HISTORY_DAYS} days.`}
+            </p>
+          ) : shownRecent.map(n => <AlertRow key={n.id} n={n} onOpen={openAlert} />)}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-border-sub px-5 py-2.5">
+          <p className="text-[12px] text-text-muted">
+            {shownRecent.length === recent.length
+              ? `${recent.length} alert${recent.length === 1 ? '' : 's'}`
+              : `${shownRecent.length} of ${recent.length}`}
+            {recent.length >= HISTORY_MAX ? ' · newest 500' : ''}
+          </p>
+          {cats.size > 0 && (
+            <button type="button" onClick={() => setCats(new Set())}
+                className="text-[12px] font-medium text-brand-red hover:underline">Clear filters</button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
     </div>
+  );
+}
+
+type HistoryRow = {
+  id: string; title: string; body: string; timestamp: string;
+  read: boolean; href: string | null; category: NotificationCategory;
+};
+
+/** One alert in a history list: kind-coloured icon, unread dot, time. */
+function AlertRow({ n, onOpen }: { n: HistoryRow; onOpen: (n: HistoryRow) => void }) {
+  const c = categoryStyle(n.category);
+  return (
+    <button type="button" onClick={() => onOpen(n)}
+      className={cn('flex w-full gap-3 px-4 py-2.5 text-left hover:bg-bg-tertiary/50', n.href ? 'cursor-pointer' : 'cursor-default')}>
+      <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border', c.tile, n.read && 'opacity-60')}
+        title={c.label} aria-label={c.label}>
+        <c.Icon size={13} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5">
+            {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-red" aria-label="Unread" />}
+            <span className={cn('text-[13px] leading-tight line-clamp-1', n.read ? 'text-text-secondary' : 'font-semibold text-text-primary')}>{n.title}</span>
+          </span>
+          <span className="shrink-0 text-[11px] text-text-muted">{stampLabel(n.timestamp)}</span>
+        </span>
+        <span className="block text-[12px] text-text-muted line-clamp-2">{n.body}</span>
+      </span>
+    </button>
   );
 }
 

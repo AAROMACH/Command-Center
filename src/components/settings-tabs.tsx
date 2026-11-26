@@ -21,12 +21,15 @@ export type SettingsTab = {
  * (?tab=…), so a link can open a tab and Back / reload keep it; an old
  * #anchor link (e.g. #quickbooks) opens the tab named in `hashTabs`.
  */
-export function SettingsTabs({ tabs, defaultTab, hashTabs = {}, className }: {
+export function SettingsTabs({ tabs, defaultTab, hashTabs = {}, className, onTabChange }: {
   tabs: SettingsTab[];
   defaultTab?: string;
   /** Old #anchor → tab id, e.g. { quickbooks: 'integrations' }. */
   hashTabs?: Record<string, string>;
   className?: string;
+  /** The open tab, on first render and on every change — so a page can hide a
+   *  header action that the open tab has nothing to do (e.g. Save on Security). */
+  onTabChange?: (id: string) => void;
 }) {
   const shown = tabs.filter(t => t.show !== false);
   const first = defaultTab && shown.some(t => t.id === defaultTab) ? defaultTab : shown[0]?.id;
@@ -52,6 +55,9 @@ export function SettingsTabs({ tabs, defaultTab, hashTabs = {}, className }: {
 
   // A tab that disappears (role loads late) falls back to the first one.
   useEffect(() => { if (tab && !shown.some(t => t.id === tab)) setTab(first); }, [shown.map(t => t.id).join(','), tab, first]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Report the open tab after render, never during one.
+  useEffect(() => { if (tab) onTabChange?.(tab); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (id: string) => {
     setTab(id);

@@ -28,6 +28,7 @@ import { ApprovalPanel } from '@/components/approval-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RecipientsField, recipientsValid } from '@/components/recipients-field';
+import type { RecipientOption } from '@/lib/client-contacts';
 import { depositAmountFor, depositCreditLine, paymentTermsDays, paymentTermsText, selectedAddOnLines } from '@/lib/quote-deposit';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -305,6 +306,9 @@ function QuoteDetailDialog({
   const [approveNote, setApproveNote] = useState('');
   // Send step: pick who gets it (customer + anyone else), then send.
   const [sendTo, setSendTo] = useState<string[] | null>(null);
+  // The client's contacts for this quote, and why the default was picked.
+  const [sendOptions, setSendOptions] = useState<RecipientOption[]>([]);
+  const [sendWhy, setSendWhy] = useState('');
   const [replyToMe, setReplyToMe] = useState(false);
   useEffect(() => { setApproving(false); setApproveNote(''); setApproveHow('Phone'); setApproveName(quote?.customerName || ''); }, [quote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -336,8 +340,20 @@ function QuoteDetailDialog({
     }
   };
 
-  const openSend = () => {
+  const openSend = async () => {
+    // Show something straight away, then let the server say who it goes to:
+    // a quote goes to the buyer who asked for it, not accounts payable.
     setSendTo([quote.customerEmail || '']);
+    setSendOptions([]); setSendWhy('');
+    try {
+      const t = await auth.currentUser?.getIdToken();
+      const r = await fetch(`/api/quotes/send?quoteId=${encodeURIComponent(quote.id)}`, { headers: { Authorization: `Bearer ${t}` } });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.to) setSendTo([d.to]);
+      setSendOptions(Array.isArray(d.options) ? d.options : []);
+      setSendWhy(typeof d.why === 'string' ? d.why : '');
+    } catch { /* keep the quote's own address */ }
   };
   // Deposit and payment terms come from the quote's terms section (edit the quote to change them).
   const depositSetting: QuoteDeposit | null = quote.deposit || null;
@@ -643,7 +659,7 @@ function QuoteDetailDialog({
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="text-left"><DialogTitle>Send quote {quote.quoteNumber}</DialogTitle></DialogHeader>
           <p className="text-[12px] text-text-muted">Everyone below gets the quote email with the link to review and approve it.</p>
-          <RecipientsField value={sendTo || ['']} onChange={setSendTo} disabled={acting} />
+          <RecipientsField value={sendTo || ['']} onChange={setSendTo} disabled={acting} options={sendOptions} why={sendWhy} />
           <label className="flex items-start gap-2 text-[12px] text-text-secondary cursor-pointer">
             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--brand-red)]" checked={replyToMe} onChange={e => setReplyToMe(e.target.checked)} disabled={acting} />
             <span>Use my email{auth.currentUser?.email ? ` (${auth.currentUser.email})` : ''} as the reply-to, so the customer’s replies come to me</span>

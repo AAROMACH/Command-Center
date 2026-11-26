@@ -607,7 +607,7 @@ export function SiteWalkPage({ walkId, basePath, backHref }: { walkId: string; b
                   {shots.length > 0 && <div className="flex gap-2 overflow-x-auto">{shots.map(({ p, i }) => (
                     <div key={p.storagePath} className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden border border-border-sub">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.url} alt={tag} className="h-full w-full object-cover" />
+                      <img loading="lazy" decoding="async" src={p.url} alt={tag} className="h-full w-full object-cover" />
                       <button type="button" onClick={() => set('photos', w.photos.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 h-8 w-8 rounded-full bg-bg-primary/80 flex items-center justify-center" aria-label="Remove photo"><X size={14} /></button>
                     </div>
                   ))}</div>}
@@ -618,7 +618,7 @@ export function SiteWalkPage({ walkId, basePath, backHref }: { walkId: string; b
               {w.photos.map((p, i) => ({ p, i })).filter(({ p }) => !p.caption).map(({ p, i }) => (
                 <div key={p.storagePath} className="relative h-20 w-20 rounded-lg overflow-hidden border border-border-sub">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+                  <img loading="lazy" decoding="async" src={p.url} alt={p.name} className="h-full w-full object-cover" />
                   <button type="button" onClick={() => set('photos', w.photos.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 h-8 w-8 rounded-full bg-bg-primary/80 flex items-center justify-center" aria-label="Remove photo"><X size={14} /></button>
                 </div>
               ))}

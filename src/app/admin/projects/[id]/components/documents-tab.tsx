@@ -392,7 +392,7 @@ function MilestoneDocuments({
                                                                 <p className="text-[10px] text-text-muted flex items-center gap-0.5 mt-0.5"><User size={6}/> {photo.uploader}</p>
                                                                 <div className="flex gap-1 mt-0.5">
                                                                     <button className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-white" aria-label="View" onClick={() => onDownload(photo)}><Eye size={10}/></button>
-                                                                    <button className="p-0.5 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}><Trash2 size={6}/></button>
+                                                                    <button className="p-0.5 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" aria-label="Delete photo" onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}><Trash2 size={10}/></button>
                                                                 </div>
                                                             </div>
                                                         </div>

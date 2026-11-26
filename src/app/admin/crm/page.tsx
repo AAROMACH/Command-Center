@@ -40,6 +40,7 @@ import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { SearchField } from '@/components/search-field';
 import { TONE_BADGE, TONE_TEXT, statusLabel, type Tone } from '@/lib/status-styles';
+import { staffBrief } from '@/components/staff-picker';
 
 const thCls = 'text-text-muted';
 
@@ -469,6 +470,8 @@ export default function CRMPage() {
         ...(convertLead.address ? { address: convertLead.address } : {}),
         roles: ['client'],
         role: 'Client',
+        // Whoever converted the lead is their contact here until changed.
+        ...(currentUser ? { accountManagerId: currentUser.id, accountManager: staffBrief(currentUser) } : {}),
         createdAt: new Date().toISOString(),
         convertedFromLeadId: convertLead.id,
       });

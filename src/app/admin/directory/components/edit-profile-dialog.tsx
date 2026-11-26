@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -25,8 +25,13 @@ import { isValidLast4, WORKER_TYPE_LABELS } from '@/lib/accounting-readiness';
 import { useAuth } from '@/contexts/auth-context';
 import { canEditUserAccess, canEditUserPay } from '@/lib/profile-permissions';
 import { ROLE_DATA } from '@/lib/constants/roles';
-import type { Technician, AppRole } from '@/lib/types';
+import type { Technician, AppRole, ClientContact } from '@/lib/types';
+import {
+  CONTACT_TYPE_LABELS, DOC_KIND_LABEL, defaultContactFor, rankedContactsFor, type DocKind,
+} from '@/lib/client-contacts';
 import { cn } from '@/lib/utils';
+import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS, normalizeTerms } from '@/lib/quote-deposit';
+import { StaffPicker, staffBrief } from '@/components/staff-picker';
 import {
   User, Phone, Mail, MapPin, Briefcase, Shield, Heart,
   FileText, Plus, X, Building2, DollarSign, Loader2, Globe,
@@ -115,8 +120,12 @@ type FormState = {
   businessType: string;
   billingContactName: string;
   billingEmail: string;
+  /** Contact that invoices / quotes go to ('' = pick the best by role). */
+  billingContactId: string;
+  quoteContactId: string;
   billingTerms: string;
-  billingDelivery: string;
+  /** Which of our people owns this client relationship. */
+  accountManagerId: string;
   customerDisplayName: string;
   billingAddress: string;
   /** '' = not decided yet. */
@@ -161,9 +170,11 @@ function personToForm(p: Technician): FormState {
     clientCompany: p.clientCompany || '',
     businessType: p.businessType || '',
     billingContactName: p.billingDetails?.contactName || '',
-    billingEmail: p.billingDetails?.email || '',
-    billingTerms: p.billingDetails?.terms || 'Net 30',
-    billingDelivery: p.billingDetails?.deliveryMethod || 'Portal',
+    billingEmail: p.billingEmail || p.billingDetails?.email || '',
+    billingContactId: p.billingContactId || '',
+    quoteContactId: p.quoteContactId || '',
+    billingTerms: normalizeTerms(p.billingDetails?.terms) || DEFAULT_PAYMENT_TERMS,
+    accountManagerId: p.accountManagerId || '',
     customerDisplayName: p.accounting?.customerDisplayName || '',
     billingAddress: p.accounting?.billingAddress || '',
     taxStatus: p.accounting?.taxExempt === true ? 'exempt' : p.accounting?.taxExempt === false ? 'taxable' : '',
@@ -205,6 +216,22 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
       setCertInput('');
     }
   }, [open, person]);
+
+  // The staff member picked as account manager, for the stored snapshot.
+  const [accountManager, setAccountManager] = useState<Technician | null>(null);
+  useEffect(() => { if (open) setAccountManager(null); }, [open]);
+
+  // The client's own contacts, for "who do invoices / quotes go to".
+  // Admin-only in firestore.rules, which is who opens this dialog.
+  const [contacts, setContacts] = useState<ClientContact[]>([]);
+  useEffect(() => {
+    if (!open || !person.id) { setContacts([]); return; }
+    let live = true;
+    getDocs(collection(db, 'users', person.id, 'contacts'))
+      .then(snap => { if (live) setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }) as ClientContact)); })
+      .catch(() => { if (live) setContacts([]); });
+    return () => { live = false; };
+  }, [open, person.id]);
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm(prev => ({ ...prev, [key]: val }));
@@ -337,8 +364,18 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
             contactName: form.billingContactName.trim(),
             email: form.billingEmail.trim(),
             terms: form.billingTerms,
-            deliveryMethod: form.billingDelivery,
           },
+          // Invoice/quote sends and the QuickBooks customer read top-level
+          // billingEmail, so write both or this screen's value is ignored
+          // (see clientBillingEmail in lib/recipients).
+          billingEmail: form.billingEmail.trim() || null,
+          accountManagerId: form.accountManagerId || null,
+          // The client can only read their own user doc, so their portal
+          // needs this copy of our person's details, not just the id. The
+          // picker re-resolves it, so each save refreshes a changed phone.
+          accountManager: form.accountManagerId && accountManager ? staffBrief(accountManager) : null,
+          billingContactId: form.billingContactId || null,
+          quoteContactId: form.quoteContactId || null,
           'accounting.customerDisplayName': orNull(form.customerDisplayName),
           'accounting.billingAddress': orNull(form.billingAddress),
           'accounting.taxExempt': form.taxStatus === 'exempt' ? true : form.taxStatus === 'taxable' ? false : null,
@@ -809,6 +846,19 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Input className={inputCls} value={form.businessType} onChange={e => set('businessType', e.target.value)} placeholder="e.g. Retail, Healthcare" />
                     </div>
                   </div>
+                  <div className="border-t border-border-sub pt-3 space-y-1">
+                    <Label className={labelCls}>Account manager</Label>
+                    <StaffPicker
+                      value={form.accountManagerId}
+                      onChange={(id, staff) => { set('accountManagerId', id); setAccountManager(staff); }}
+                      onResolve={setAccountManager}
+                      className={inputCls}
+                      noneLabel="Nobody yet"
+                    />
+                    <p className="text-[11px] text-text-muted">
+                      Our point of contact for this client. Shown in their portal with your name, email and phone, so they know who to ask.
+                    </p>
+                  </div>
                   <div className="border-t border-border-sub pt-3">
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Billing Details</p>
                     <div className="space-y-3">
@@ -825,28 +875,56 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           </div>
                         </div>
                       </div>
+                      {/* Who each document goes to. Invoices land with accounts
+                          payable; a quote usually goes to the person who asked
+                          for it. Unset = the best contact for that role. */}
+                      <div className="border-t border-border-sub pt-3 space-y-3">
+                        <p className="text-[11px] text-text-muted">
+                          {contacts.length
+                            ? 'Who each document goes to by default. You can still change the address on any single send.'
+                            : 'Add people under Clients → Contacts to send invoices and quotes to different addresses.'}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {(['invoice', 'quote'] as DocKind[]).map(kind => {
+                            const field = kind === 'invoice' ? 'billingContactId' : 'quoteContactId';
+                            const ranked = rankedContactsFor(kind, contacts);
+                            const auto = defaultContactFor(kind, { ...person, [field]: '' }, contacts);
+                            return (
+                              <div key={kind} className="space-y-1">
+                                <Label className={labelCls}>{DOC_KIND_LABEL[kind]} go to</Label>
+                                <Select value={form[field] || 'auto'} onValueChange={v => set(field, v === 'auto' ? '' : v)}>
+                                  <SelectTrigger className={inputCls} disabled={!ranked.length}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-bg-elevated border-border-main">
+                                    <SelectItem value="auto">
+                                      {auto ? `Best match — ${auto.name}` : 'Billing email above'}
+                                    </SelectItem>
+                                    {ranked.map(c => (
+                                      <SelectItem key={c.id} value={c.id}>
+                                        {c.name} · {CONTACT_TYPE_LABELS[c.contactType] || c.contactType}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {!ranked.length && <p className="text-[11px] text-text-muted">No contact with an email address.</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className={labelCls}>Payment Terms</Label>
                           <Select value={form.billingTerms} onValueChange={v => set('billingTerms', v)}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              {['Net 15', 'Net 30', 'Net 60', 'Due on Receipt'].map(t => (
-                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              {PAYMENT_TERMS.map(t => (
+                                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className={labelCls}>Invoice Delivery</Label>
-                          <Select value={form.billingDelivery} onValueChange={v => set('billingDelivery', v)}>
-                            <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="Email">Email</SelectItem>
-                              <SelectItem value="Portal">Portal</SelectItem>
-                              <SelectItem value="Both">Email &amp; Portal</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <p className="text-[11px] text-text-muted">Sets the due date on their new invoices.</p>
                         </div>
                       </div>
                     </div>

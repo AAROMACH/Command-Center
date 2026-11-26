@@ -1,6 +1,6 @@
 'use client';
 
-import { DEFAULT_PAYMENT_TERMS, DEPOSIT_PERCENTS, PAYMENT_TERMS, depositAmountFor, paymentTermsLabel } from '@/lib/quote-deposit';
+import { DEFAULT_PAYMENT_TERMS, DEPOSIT_PERCENTS, PAYMENT_TERMS, clientTerms, depositAmountFor, dueDateFor, paymentTermsLabel } from '@/lib/quote-deposit';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -227,7 +227,19 @@ export function PriceDocEditor({
   const taxPct = kind === 'quote' ? 0 : settings.salesTaxPct;
   const totals = useMemo(() => priceTotals(v.lines, discount, taxPct), [v.lines, discount, taxPct]);
 
-  const pickClient = (id: string) => { set('clientId', id); setDiscountMode('auto'); };
+  const pickClient = (id: string) => {
+    setDiscountMode('auto');
+    // A client's agreed payment terms set the due date, instead of every
+    // invoice starting at Net 30 and being corrected by hand. Only on a new
+    // invoice, and only when the client has terms on file — an existing
+    // invoice keeps the dates it was saved with.
+    const terms = isNewInvoice ? clientTerms(clients.find(c => c.id === id)) : null;
+    setV(prev => ({
+      ...prev,
+      clientId: id,
+      ...(terms ? { paymentTerms: terms, dueDate: dueDateFor(prev.issueDate, terms) } : {}),
+    }));
+  };
 
   // ── Lines ──
   const addLine = (section: PriceSection, from?: PriceBookItem) => setV(p => ({
@@ -294,7 +306,7 @@ export function PriceDocEditor({
               <div key={l.id} className="grid grid-cols-[1fr,28px] sm:grid-cols-[1fr,64px,96px,112px,80px,28px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-secondary">
                 <Input className="h-8 text-[12px] bg-bg-primary border-border-sub col-span-1" value={l.name}
                   onChange={e => setLine(l.id, { name: e.target.value })} placeholder={isLabor ? 'Installation labor' : 'CAT6 plenum cable'} />
-                <button type="button" onClick={() => removeLine(l.id)} className="sm:hidden text-text-muted hover:text-brand-red justify-self-center"><Trash2 size={13} /></button>
+                <button type="button" onClick={() => removeLine(l.id)} aria-label="Remove line" className="sm:hidden text-text-muted hover:text-brand-red justify-self-center"><Trash2 size={13} /></button>
                 <div className="col-span-2 sm:col-span-1 grid grid-cols-[64px,1fr,auto] sm:contents gap-2 items-center">
                   <Input type="number" className="h-8 text-[12px] bg-bg-primary border-border-sub text-center" value={l.quantity}
                     onChange={e => setLine(l.id, { quantity: parseFloat(e.target.value) || 0 })} />
@@ -317,7 +329,7 @@ export function PriceDocEditor({
                   )}
                 </div>
                 <span className="hidden sm:block text-right text-[12px] font-mono font-bold text-text-primary">{formatMoney(lineAmount(l))}</span>
-                <button type="button" onClick={() => removeLine(l.id)} className="hidden sm:block text-text-muted hover:text-brand-red justify-self-center"><Trash2 size={13} /></button>
+                <button type="button" onClick={() => removeLine(l.id)} aria-label="Remove line" className="hidden sm:block text-text-muted hover:text-brand-red justify-self-center"><Trash2 size={13} /></button>
                 <span className="sm:hidden col-span-2 text-right text-[12px] font-mono font-bold text-text-primary">{formatMoney(lineAmount(l))}</span>
                 <div className="col-span-2 sm:col-span-6 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[11px] text-text-muted">
                   <label className="flex items-center gap-1.5">
@@ -477,14 +489,14 @@ export function PriceDocEditor({
                 <div key={g.id} className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <Input className="h-8 text-[12px] bg-bg-primary border-border-sub flex-1" value={g.title} onChange={e => updateGroup(gi, { title: e.target.value })} placeholder="Group title (e.g. Camera upgrade)" />
-                    <button type="button" onClick={() => setGroups(groups.filter((_, i) => i !== gi))} className="text-text-muted hover:text-brand-red"><Trash2 size={13} /></button>
+                    <button type="button" onClick={() => setGroups(groups.filter((_, i) => i !== gi))} aria-label="Remove group" className="text-text-muted hover:text-brand-red"><Trash2 size={13} /></button>
                   </div>
                   {g.options.map((o, oi) => (
                     <div key={o.id} className="flex items-center gap-2">
                       <Input className="h-8 text-[12px] bg-bg-primary border-border-sub flex-1" value={o.label} onChange={e => updateOption(gi, oi, { label: e.target.value })} placeholder="Option" />
                       <Input type="number" className="h-8 text-[12px] bg-bg-primary border-border-sub w-24" value={o.priceAdjustment}
                         onChange={e => updateOption(gi, oi, { priceAdjustment: parseFloat(e.target.value) || 0 })} placeholder="+$" />
-                      <button type="button" onClick={() => updateGroup(gi, { options: g.options.filter((_, i) => i !== oi) })} className="text-text-muted hover:text-brand-red"><Trash2 size={12} /></button>
+                      <button type="button" onClick={() => updateGroup(gi, { options: g.options.filter((_, i) => i !== oi) })} aria-label="Remove option" className="text-text-muted hover:text-brand-red"><Trash2 size={12} /></button>
                     </div>
                   ))}
                   <Button size="sm" variant="ghost" className="h-6 text-[11px] text-text-muted"

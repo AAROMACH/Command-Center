@@ -142,8 +142,8 @@ const PhaseBlock = ({
                             </div>
                             {isEditing && !isReadOnly && (
                                 <div className="task-actions opacity-0 group-hover/task:opacity-100 transition-opacity">
-                                    <button className="task-action-btn" onClick={() => onEditTask(phase.id, task)}><Pencil size={14}/></button>
-                                    <button className="task-action-btn hover:text-text-red" onClick={() => onDeleteTask(phase.id, task.id)}><Trash2 size={14}/></button>
+                                    <button className="task-action-btn" aria-label="Edit task" onClick={() => onEditTask(phase.id, task)}><Pencil size={14}/></button>
+                                    <button className="task-action-btn hover:text-text-red" aria-label="Delete task" onClick={() => onDeleteTask(phase.id, task.id)}><Trash2 size={14}/></button>
                                 </div>
                             )}
                         </div>

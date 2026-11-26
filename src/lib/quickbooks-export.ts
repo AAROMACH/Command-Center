@@ -18,6 +18,7 @@ import type { Invoice, InventoryItem, Material, Technician } from './types';
 import type { PricingSettings, LaborRate } from './billing';
 import type { CatalogService } from './estimating';
 import { materialPrice } from './price-lines';
+import { clientBillingEmail } from './recipients';
 
 export type Csv = { name: string; header: string[]; rows: (string | number)[][] };
 
@@ -57,7 +58,7 @@ export function customersCsv(clients: Technician[]): Csv {
             return [
                 unique(customerName(u)), clip(u.clientCompany || ''),
                 parts.length > 1 ? parts[0] : '', parts.length > 1 ? parts.slice(1).join(' ') : '',
-                clip(u.billingEmail || u.billingDetails?.email || u.email || '', 100), clip(u.phone || '', 30),
+                clip(clientBillingEmail(u), 100), clip(u.phone || '', 30),
                 clip(u.accounting?.billingAddress || u.address || '', 500),
                 u.accounting?.taxExempt ? `Tax exempt${u.accounting.taxExemptReason ? `: ${u.accounting.taxExemptReason}` : ''}` : '',
             ];

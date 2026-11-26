@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Bell, Info, AlertTriangle, Clock, CheckCircle2, Eye, Lock } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Bell, AlertTriangle, CheckCircle2, Eye, Lock, ArrowUpDown, SlidersHorizontal, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isAfter, isToday } from 'date-fns';
@@ -18,6 +19,15 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useAuth } from '@/contexts/auth-context';
 import { entityHref } from '@/lib/notification-links';
+import {
+  CATEGORIES, SORT_OPTIONS, categoryForTitle, categoryStyle, countByCategory, sortNotifications,
+  type NotificationCategory, type NotificationSort,
+} from '@/lib/notification-categories';
+
+/** How far back the bell keeps history, and a ceiling so a busy account
+ *  never renders thousands of rows at once. */
+const HISTORY_DAYS = 30;
+const HISTORY_MAX = 500;
 
 /**
  * `compact`: the small icon used in the top bar on every page (no latest-alert
@@ -35,7 +45,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
   // Where each personal alert opens (its job / project / request / lead).
   const [links, setLinks] = useState<Record<string, string>>({});
   // Recent tab: this portal's alerts from the last 30 days, read ones included.
-  const [recent, setRecent] = useState<{ id: string; title: string; body: string; timestamp: string; read: boolean; href: string | null }[]>([]);
+  const [recent, setRecent] = useState<{ id: string; title: string; body: string; timestamp: string; read: boolean; href: string | null; category: NotificationCategory }[]>([]);
   const [view, setView] = useState<'unread' | 'recent'>('unread');
   const router = useRouter();
 
@@ -49,14 +59,18 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
     return onSnapshot(q, (snap) => {
       const mine = snap.docs.map(d => d.data())
         .filter(n => n.type === 'push' && notificationPortals(n).includes(portal));
-      const cutoff = Date.now() - 30 * 86_400_000;
+      const cutoff = Date.now() - HISTORY_DAYS * 86_400_000;
       setRecent(mine
         .filter(n => new Date(n.timestamp).getTime() >= cutoff)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 30)
+        // The whole window, not the newest 30: a 30-item cap here meant
+        // filtering to one kind searched only those 30 and came back empty
+        // even when that kind had plenty in the last 30 days.
+        .slice(0, HISTORY_MAX)
         .map(n => ({
           id: String(n.id), title: String(n.title || '').replace(/^\[AAROMACH\]\s*/, ''), body: String(n.body || ''),
           timestamp: n.timestamp, read: !!n.read, href: entityHref(portal, n.relatedEntityType, n.relatedEntityId),
+          category: categoryForTitle(String(n.title || '')),
         })));
       const unread = mine.filter(n => !n.read);
       setLinks(Object.fromEntries(unread
@@ -77,7 +91,31 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
   const [open, setOpen] = useState(false);
   // "View all" expands the popover list past the 3 most recent.
   const [showAll, setShowAll] = useState(false);
-  useEffect(() => { if (!open) { setShowAll(false); setView('unread'); } }, [open]);
+  const [sort, setSort] = useState<NotificationSort>('newest');
+  // Empty = every kind. Filtering by kind is how you read one thread of
+  // alerts ("just the pay ones") without wading through the rest.
+  const [cats, setCats] = useState<Set<NotificationCategory>>(new Set());
+  const [panel, setPanel] = useState<'sort' | 'filter' | null>(null);
+  // The roomy history view — the popover is too narrow to read 30 days in.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  useEffect(() => {
+    if (!open) { setShowAll(false); setView('unread'); setPanel(null); setCats(new Set()); setSort('newest'); }
+  }, [open]);
+  // "Unread first" means nothing on a list that is only unread.
+  useEffect(() => { if (view === 'unread' && sort === 'unread') setSort('newest'); }, [view, sort]);
+
+  const openAlert = (n: { id: string; read: boolean; href: string | null }) => {
+    if (!n.read) updateDoc(doc(db, 'notifications', n.id), { read: true }).catch(() => {});
+    if (n.href) { setOpen(false); setHistoryOpen(false); router.push(n.href); }
+  };
+
+  const toggleCat = (id: NotificationCategory) => setCats(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const keep = <T extends { category: NotificationCategory }>(list: T[]) =>
+    cats.size ? list.filter(n => cats.has(n.category)) : list;
 
   // Listen to Firestore broadcasts in real-time
   useEffect(() => {
@@ -186,17 +224,35 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
     });
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'critical': return AlertTriangle;
-      case 'warning': return Clock;
-      case 'success': return CheckCircle2;
-      default: return Info;
-    }
-  };
+  // A 'critical' broadcast is an admin shouting on purpose — it keeps the red
+  // warning treatment. Everything else is coloured and iconed by its kind, so
+  // pay, jobs and messages are telling apart at a glance.
+  const getIcon = (type: string) => (type === 'critical' ? AlertTriangle : Bell);
+  const tileFor = (type: string, category: NotificationCategory) =>
+    type === 'critical'
+      ? 'bg-brand-red-dim text-text-red border-brand-red/30'
+      : categoryStyle(category).tile;
+  const iconFor = (type: string, category: NotificationCategory) =>
+    type === 'critical' ? AlertTriangle : categoryStyle(category).Icon;
+
+  // Every alert's kind comes from its title (lib/notification-categories), so
+  // this works on records written before categories existed.
+  const tagged = useMemo(
+    () => messages.map(m => ({ ...m, category: categoryForTitle(m.subject || '') })),
+    [messages],
+  );
+  const shownUnread = useMemo(() => sortNotifications(keep(tagged), sort), [tagged, sort, cats]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shownRecent = useMemo(() => sortNotifications(keep(recent), sort), [recent, sort, cats]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Counts come from the whole list, not the filtered one, so the filter
+  // panel always says how many of each kind there are to switch to.
+  const counts = useMemo(() => countByCategory(view === 'recent' ? recent : tagged), [recent, tagged, view]);
+  const sortLabel = SORT_OPTIONS.find(o => o.id === sort)?.label || 'Newest first';
+  const historyCounts = useMemo(() => countByCategory(recent), [recent]);
+  // Narrowing to a kind is itself a request to see them all.
+  const expanded = showAll || cats.size > 0;
 
   const latest = messages[0];
-  const LatestIcon = latest ? getIcon(latest.type) : Info;
+  const LatestIcon = latest ? getIcon(latest.type) : Bell;
 
   return (
     <div className="flex items-center gap-2">
@@ -265,55 +321,113 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
         )}
       </PopoverTrigger>
       <PopoverContent className="w-[22rem] max-w-[calc(100vw-2rem)] p-0 bg-bg-elevated border-border-main shadow-md overflow-hidden" align="end">
-        <div className="px-4 pt-3 pb-2 border-b border-border-sub space-y-2">
-            <h3 className="text-[14px] font-semibold text-text-primary">Notifications</h3>
+        <div className="relative border-b border-border-sub">
+          <div className="px-4 pt-3 pb-2 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[14px] font-semibold text-text-primary">Notifications</h3>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setPanel(p => (p === 'sort' ? null : 'sort'))}
+                    aria-expanded={panel === 'sort'} aria-label={`Sort: ${sortLabel}`} title={`Sort: ${sortLabel}`}
+                    className={cn('inline-flex h-8 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors',
+                      panel === 'sort' ? 'border-brand-red/40 bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted hover:text-text-primary')}>
+                  <ArrowUpDown size={13} /> Sort
+                </button>
+                <button type="button" onClick={() => setPanel(p => (p === 'filter' ? null : 'filter'))}
+                    aria-expanded={panel === 'filter'} aria-label="Filter by kind"
+                    className={cn('inline-flex h-8 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors',
+                      panel === 'filter' || cats.size ? 'border-brand-red/40 bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted hover:text-text-primary')}>
+                  <SlidersHorizontal size={13} /> {cats.size ? `${cats.size} kind${cats.size > 1 ? 's' : ''}` : 'Filter'}
+                </button>
+              </div>
+            </div>
             <div className="tabs flex-nowrap" role="tablist">
                 {([['unread', `Unread${messages.length ? ` (${messages.length})` : ''}`], ['recent', 'Recent']] as const).map(([v, label]) => (
                     <button key={v} type="button" role="tab" aria-selected={view === v}
                         className={cn('tab flex-1 text-center', view === v && 'active')} onClick={() => setView(v)}>{label}</button>
                 ))}
             </div>
+            {/* What's filtered, with one tap to drop each kind. */}
+            {cats.size > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {CATEGORIES.filter(c => cats.has(c.id)).map(c => (
+                  <button key={c.id} type="button" onClick={() => toggleCat(c.id)}
+                      aria-label={`Stop filtering by ${c.label}`}
+                      className={cn('inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-medium', c.chip)}>
+                    <c.Icon size={11} /> {c.label} <X size={11} />
+                  </button>
+                ))}
+                <button type="button" onClick={() => setCats(new Set())}
+                    className="text-[11px] font-medium text-text-muted hover:text-text-primary underline">Clear</button>
+              </div>
+            )}
+          </div>
+
+          {/* Mini pop-ups over the list: how it's sorted, and which kinds to show. */}
+          {panel === 'sort' && (
+            <div className="absolute left-0 right-0 top-full z-20 border-b border-border-main bg-bg-elevated p-1.5 shadow-md" role="menu">
+              {SORT_OPTIONS.filter(o => !('recentOnly' in o && o.recentOnly) || view === 'recent').map(o => (
+                <button key={o.id} type="button" role="menuitemradio" aria-checked={sort === o.id}
+                    onClick={() => { setSort(o.id); setPanel(null); }}
+                    className={cn('flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-[12px] transition-colors',
+                      sort === o.id ? 'bg-brand-red/10 font-semibold text-brand-red' : 'text-text-secondary hover:bg-bg-tertiary/60 hover:text-text-primary')}>
+                  {o.label}
+                  {sort === o.id && <Check size={13} />}
+                </button>
+              ))}
+            </div>
+          )}
+          {panel === 'filter' && (
+            <div className="absolute left-0 right-0 top-full z-20 border-b border-border-main bg-bg-elevated p-1.5 shadow-md">
+              <div className="flex items-center justify-between px-2 pb-1 pt-0.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Show these kinds</span>
+                {cats.size > 0 && (
+                  <button type="button" onClick={() => setCats(new Set())}
+                      className="text-[11px] font-medium text-brand-red hover:underline">All</button>
+                )}
+              </div>
+              {CATEGORIES.map(c => {
+                const on = cats.has(c.id);
+                return (
+                  <button key={c.id} type="button" role="checkbox" aria-checked={on} onClick={() => toggleCat(c.id)}
+                      className={cn('flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] transition-colors',
+                        on ? 'bg-brand-red/10 font-semibold text-text-primary' : 'text-text-secondary hover:bg-bg-tertiary/60')}>
+                    <span className={cn('h-2 w-2 shrink-0 rounded-full', c.dot)} />
+                    <c.Icon size={13} className="shrink-0 text-text-muted" />
+                    <span className="flex-1">{c.label}</span>
+                    <span className="text-[11px] text-text-muted">{counts[c.id] || 0}</span>
+                    {on && <Check size={13} className="text-brand-red" />}
+                  </button>
+                );
+              })}
+              <p className="px-2.5 pb-1 pt-1.5 text-[11px] text-text-muted">
+                Pick nothing to see every kind. Change which of these reach your phone in Settings → Notifications.
+              </p>
+            </div>
+          )}
         </div>
         {view === 'recent' ? (
             <div className="max-h-[min(480px,65vh)] overflow-y-auto overscroll-contain divide-y divide-border-sub">
-                {recent.length === 0 ? (
-                    <p className="px-4 py-8 text-center text-[13px] text-text-muted">Nothing in the last 30 days.</p>
-                ) : recent.map(n => (
-                    <button key={n.id} type="button"
-                        onClick={() => {
-                            if (!n.read) updateDoc(doc(db, 'notifications', n.id), { read: true }).catch(() => {});
-                            if (n.href) { setOpen(false); router.push(n.href); }
-                        }}
-                        className={cn('w-full flex gap-3 px-4 py-2.5 text-left hover:bg-bg-tertiary/50', n.href ? 'cursor-pointer' : 'cursor-default')}>
-                        <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.read ? 'bg-transparent' : 'bg-brand-red')} />
-                        <span className="min-w-0 flex-1">
-                            <span className="flex items-baseline justify-between gap-2">
-                                <span className={cn('text-[13px] leading-tight line-clamp-1', n.read ? 'text-text-secondary' : 'font-semibold text-text-primary')}>{n.title}</span>
-                                <span className="shrink-0 text-[11px] text-text-muted">{stampLabel(n.timestamp)}</span>
-                            </span>
-                            <span className="block text-[12px] text-text-muted line-clamp-2">{n.body}</span>
-                        </span>
-                    </button>
+                {shownRecent.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-[13px] text-text-muted">
+                        {recent.length ? 'Nothing of these kinds in the last 30 days.' : 'Nothing in the last 30 days.'}
+                    </p>
+                ) : shownRecent.map(n => (
+                    <AlertRow key={n.id} n={n} onOpen={openAlert} />
                 ))}
             </div>
         ) : (<>
-        <div className={cn('overflow-y-auto overscroll-contain', showAll ? 'max-h-[min(480px,65vh)]' : 'max-h-[360px]')}>
-            {messages.length > 0 ? (
+        <div className={cn('overflow-y-auto overscroll-contain', expanded ? 'max-h-[min(480px,65vh)]' : 'max-h-[360px]')}>
+            {shownUnread.length > 0 ? (
                 <div className="divide-y divide-border-sub">
-                    {(showAll ? messages : messages.slice(0, 3)).map((msg) => {
-                        const Icon = getIcon(msg.type);
+                    {(expanded ? shownUnread : shownUnread.slice(0, 3)).map((msg) => {
+                        const Icon = iconFor(msg.type, msg.category);
                         return (
                             <div key={msg.id}
                                 onClick={links[msg.id] ? () => { setOpen(false); handleClearMessage(msg.id, msg.subject); router.push(links[msg.id]); } : undefined}
                                 className={cn("px-4 py-3 hover:bg-bg-tertiary/50 transition-colors group relative pr-12", links[msg.id] ? 'cursor-pointer' : 'cursor-default')}>
                                 <div className="flex gap-3">
-                                    <div className={cn(
-                                        "p-2 rounded-lg shrink-0 h-fit transition-colors",
-                                        msg.type === 'critical' ? "bg-brand-red-dim text-text-red border border-brand-red/30" :
-                                        msg.type === 'warning' ? "bg-accent-gold-dim text-accent-gold border border-accent-gold/30" :
-                                        msg.type === 'success' ? "bg-green-dim text-text-green border border-green-border/30" :
-                                        "bg-bg-secondary text-text-secondary border border-border-sub"
-                                    )}>
+                                    <div className={cn('p-2 rounded-lg shrink-0 h-fit border transition-colors', tileFor(msg.type, msg.category))}
+                                        title={categoryStyle(msg.category).label}>
                                         <Icon size={14} />
                                     </div>
                                     <div className="space-y-0.5 min-w-0 flex-1">
@@ -355,29 +469,138 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
             ) : (
                 <div className="px-6 py-10 text-center space-y-2">
                     <CheckCircle2 size={24} className="mx-auto text-text-green/60" />
-                    <p className="text-[13px] font-medium text-text-primary">You&apos;re all caught up</p>
-                    <p className="text-[12px] text-text-muted">New alerts and messages will show up here.</p>
+                    {messages.length ? (<>
+                        <p className="text-[13px] font-medium text-text-primary">Nothing unread of these kinds</p>
+                        <button type="button" onClick={() => setCats(new Set())} className="text-[12px] font-medium text-brand-red hover:underline">
+                            Show all {messages.length} unread
+                        </button>
+                    </>) : (<>
+                        <p className="text-[13px] font-medium text-text-primary">You&apos;re all caught up</p>
+                        <p className="text-[12px] text-text-muted">New alerts and messages will show up here.</p>
+                    </>)}
                 </div>
             )}
         </div>
-        {messages.length > 3 && (
+        {shownUnread.length > 3 && (
             <div className="px-4 py-2 border-t border-border-sub flex items-center justify-between gap-2">
                 <p className="text-[12px] text-text-muted">
-                    {showAll ? `Showing all ${messages.length}` : `Showing 3 of ${messages.length}`}
+                    {expanded ? `Showing all ${shownUnread.length}` : `Showing 3 of ${shownUnread.length}`}
                 </p>
                 <button
                     type="button"
-                    onClick={() => setShowAll(v => !v)}
+                    onClick={() => (expanded ? (setShowAll(false), setCats(new Set())) : setShowAll(true))}
                     className="text-[12px] font-medium text-brand-red hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red rounded-sm"
                 >
-                    {showAll ? 'Show less' : 'View all'}
+                    {expanded ? 'Show less' : 'View all'}
                 </button>
             </div>
         )}
         </>)}
+        {/* The popover is too narrow to read a month in — this opens the roomy one. */}
+        <div className="border-t border-border-sub px-4 py-2 text-center">
+          <button type="button" onClick={() => { setPanel(null); setOpen(false); setHistoryOpen(true); }}
+              className="text-[12px] font-medium text-brand-red hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red rounded-sm">
+            See all {HISTORY_DAYS} days{recent.length ? ` (${recent.length})` : ''}
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
+
+    {/* Full history: scrollable, filterable, the last 30 days. */}
+    <Dialog open={historyOpen} onOpenChange={o => { setHistoryOpen(o); if (!o) { setCats(new Set()); setSort('newest'); } }}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-2xl">
+        <DialogHeader className="px-5 pb-3 pt-5 text-left">
+          <DialogTitle>Notifications</DialogTitle>
+          <DialogDescription>
+            Everything from the last {HISTORY_DAYS} days. Older alerts drop off.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2.5 border-y border-border-sub bg-bg-secondary/40 px-5 py-3">
+          {/* Room for the kinds to sit out in the open here, no pop-up needed. */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button type="button" onClick={() => setCats(new Set())}
+                className={cn('inline-flex h-8 items-center rounded-full border px-2.5 text-[11px] font-medium transition-colors',
+                  cats.size === 0 ? 'border-brand-red bg-brand-red text-white' : 'border-border-sub text-text-muted hover:text-text-primary')}>
+              All {recent.length ? `· ${recent.length}` : ''}
+            </button>
+            {CATEGORIES.map(c => {
+              const n = historyCounts[c.id] || 0;
+              const on = cats.has(c.id);
+              return (
+                <button key={c.id} type="button" onClick={() => toggleCat(c.id)} disabled={!n && !on}
+                    aria-pressed={on}
+                    className={cn('inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors disabled:opacity-40',
+                      on ? c.chip : 'border-border-sub text-text-muted hover:text-text-primary')}>
+                  <c.Icon size={12} /> {c.label} {n ? `· ${n}` : ''}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Sort</span>
+            {SORT_OPTIONS.map(o => (
+              <button key={o.id} type="button" onClick={() => setSort(o.id)}
+                  className={cn('inline-flex h-8 items-center rounded-md border px-2.5 text-[11px] font-medium transition-colors',
+                    sort === o.id ? 'border-brand-red/40 bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted hover:text-text-primary')}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 divide-y divide-border-sub overflow-y-auto overscroll-contain">
+          {shownRecent.length === 0 ? (
+            <p className="px-6 py-16 text-center text-[13px] text-text-muted">
+              {recent.length ? 'Nothing of these kinds in the last 30 days.' : `Nothing in the last ${HISTORY_DAYS} days.`}
+            </p>
+          ) : shownRecent.map(n => <AlertRow key={n.id} n={n} onOpen={openAlert} />)}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-border-sub px-5 py-2.5">
+          <p className="text-[12px] text-text-muted">
+            {shownRecent.length === recent.length
+              ? `${recent.length} alert${recent.length === 1 ? '' : 's'}`
+              : `${shownRecent.length} of ${recent.length}`}
+            {recent.length >= HISTORY_MAX ? ' · newest 500' : ''}
+          </p>
+          {cats.size > 0 && (
+            <button type="button" onClick={() => setCats(new Set())}
+                className="text-[12px] font-medium text-brand-red hover:underline">Clear filters</button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
     </div>
+  );
+}
+
+type HistoryRow = {
+  id: string; title: string; body: string; timestamp: string;
+  read: boolean; href: string | null; category: NotificationCategory;
+};
+
+/** One alert in a history list: kind-coloured icon, unread dot, time. */
+function AlertRow({ n, onOpen }: { n: HistoryRow; onOpen: (n: HistoryRow) => void }) {
+  const c = categoryStyle(n.category);
+  return (
+    <button type="button" onClick={() => onOpen(n)}
+      className={cn('flex w-full gap-3 px-4 py-2.5 text-left hover:bg-bg-tertiary/50', n.href ? 'cursor-pointer' : 'cursor-default')}>
+      <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border', c.tile, n.read && 'opacity-60')}
+        title={c.label} aria-label={c.label}>
+        <c.Icon size={13} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5">
+            {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-red" aria-label="Unread" />}
+            <span className={cn('text-[13px] leading-tight line-clamp-1', n.read ? 'text-text-secondary' : 'font-semibold text-text-primary')}>{n.title}</span>
+          </span>
+          <span className="shrink-0 text-[11px] text-text-muted">{stampLabel(n.timestamp)}</span>
+        </span>
+        <span className="block text-[12px] text-text-muted line-clamp-2">{n.body}</span>
+      </span>
+    </button>
   );
 }
 

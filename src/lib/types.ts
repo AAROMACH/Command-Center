@@ -249,13 +249,44 @@ export type Technician = {
    *  user as a Vendor (a paid tech) or a Customer (a client). See
    *  lib/accounting-readiness.ts. */
   accounting?: UserAccounting;
-  /** Client: where invoices are emailed (else their sign-in email). */
+  /** Client: where invoices are emailed (else their sign-in email).
+   *  Read through clientBillingEmail() in lib/recipients — never on its own. */
   billingEmail?: string | null;
+  /** Client: the contact in `users/{id}/contacts` that invoices go to, and
+   *  the email on their QuickBooks customer. Unset = the best accounts
+   *  payable / billing contact, else billingEmail (lib/client-contacts). */
+  billingContactId?: string | null;
+  /** Client: the contact quotes go to — often the buyer who asked for it,
+   *  not accounts payable. Unset = the best decision maker / main contact. */
+  quoteContactId?: string | null;
+  /** Client: which of OUR people owns this relationship — the name and number
+   *  the client sees in their portal when they have a question. Admin-set. */
+  accountManagerId?: string | null;
+  /** Display copy of accountManagerId's details. Denormalized on purpose:
+   *  firestore.rules lets a client read only their own user doc, so they
+   *  could never read the staff member's. Rewritten whenever an admin saves
+   *  the client, so it can lag a staff phone change until then. */
+  accountManager?: {
+    id: string;
+    name: string;
+    jobTitle?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
   billingDetails?: {
     contactName: string;
+    /** Read through clientBillingEmail() in lib/recipients, never on its own. */
     email: string;
-    terms: 'Net 15' | 'Net 30' | 'Net 60' | 'Due on Receipt' | string;
-    deliveryMethod: 'Email' | 'Portal' | 'Both' | string;
+    /** A PAYMENT_TERMS value ('net_30'). Older records hold the label
+     *  ('Net 30') — read through normalizeTerms() in lib/quote-deposit. */
+    terms: string;
+    /** @deprecated Nothing ever read it, so a client set to "Portal" still got
+     *  invoice emails. Removed from the editors rather than honoured: it
+     *  defaulted to 'Portal' when unset, so honouring it would have silently
+     *  stopped invoice emails for every client who never chose Email. The
+     *  portal lists every invoice regardless, and recipients are chosen per
+     *  send. Retained only so existing documents type-check on read. */
+    deliveryMethod?: 'Email' | 'Portal' | 'Both' | string;
   };
   notificationPreferences?: NotificationPreferences;
   permissionOverrides?: Record<string, boolean>;
@@ -299,6 +330,9 @@ export type QboLink = {
   syncToken?: string;
   syncedAt?: string;
   error?: string | null;
+  /** Customers: the address last pushed to QuickBooks, so the sync can tell
+   *  the billing email changed and patch it instead of leaving it stale. */
+  email?: string | null;
 };
 
 export type WorkerType = '1099_contractor' | 'w2_employee' | 'not_paid';
@@ -1520,6 +1554,12 @@ export type ClientContact = {
   email?: string;
   contactType: 'main' | 'billing' | 'site' | 'emergency' | 'decision_maker' | 'accounts_payable' | 'store_manager' | 'regional_manager';
   isPrimary?: boolean;
+  /** Which of our people deals with this person. Informational, and it
+   *  orders the send dialog's list — it never changes which address an
+   *  invoice defaults to, so who is logged in can't move where money mail
+   *  goes (see lib/client-contacts). */
+  ownerId?: string | null;
+  ownerName?: string | null;
   preferredContactMethod?: 'phone' | 'email' | 'text';
   notes?: string;
   createdAt: string;

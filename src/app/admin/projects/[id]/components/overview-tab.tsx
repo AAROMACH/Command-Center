@@ -230,6 +230,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                             <label className="field-label">Site contact phone</label>
                             <UnlockableField locked={!unlocked.has('onsiteContactPhone')} onUnlock={() => unlock('onsiteContactPhone')} canEdit={!isReadOnly}>
                                 <Input
+                                    type="tel"
+                                    inputMode="tel"
                                     disabled={isReadOnly}
                                     readOnly={!unlocked.has('onsiteContactPhone')}
                                     className="field-input !text-[13px]"

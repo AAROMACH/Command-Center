@@ -18,6 +18,7 @@ export function invoiceToEditor(inv: Invoice): Partial<PriceDocValues> {
     invoiceNumber: inv.invoiceNumber,
     issueDate: (inv.issueDate || '').slice(0, 10),
     dueDate: (inv.dueDate || '').slice(0, 10),
+    ...(inv.paymentTerms ? { paymentTerms: inv.paymentTerms } : {}),
     relatedId: inv.projectId || inv.workOrderId || '',
     status: inv.status,
     terms: inv.notes || '',
@@ -45,6 +46,10 @@ export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice
     workOrderId: r.relatedId && !isProject ? r.relatedId : undefined,
     issueDate: r.issueDate,
     dueDate: r.dueDate,
+    // Snapshot, not a live lookup: changing a client's terms later must never
+    // move the due date on an invoice already sent. QuickBooks reads this
+    // first and only falls back to issue → due arithmetic.
+    paymentTerms: r.paymentTerms || existing?.paymentTerms || null,
     status: r.status,
     lineItems: toInvoiceLines(r.lines as PriceLine[]),
     notes: r.terms,

@@ -385,7 +385,7 @@ export default function ClientMessagingPage() {
                               : 'bg-bg-tertiary border border-border-sub text-text-primary rounded-tl-sm'
                           )}>
                             {(msg.imageUrls || []).map((u, i) => (
-                              <img key={i} src={u} alt="attachment" className="max-w-full rounded-lg mb-2 max-h-48 object-contain" />
+                              <img loading="lazy" decoding="async" key={i} src={u} alt="Attachment" className="max-w-full rounded-lg mb-2 max-h-48 object-contain" />
                             ))}
                             {msg.body && <p className="text-[13px] leading-relaxed">{msg.body}</p>}
                             <p className={cn('text-[11px] mt-1', isMe ? 'text-white/70' : 'text-text-muted')}>
@@ -405,7 +405,7 @@ export default function ClientMessagingPage() {
                 {pendingImageUrl && (
                   <div className="mb-2 flex items-center gap-2 px-2 py-1.5 bg-bg-secondary rounded-lg border border-border-sub">
                     <ImageIcon size={12} className="text-text-muted shrink-0" />
-                    <img src={pendingImageUrl} alt="pending attachment" className="h-10 rounded object-contain" />
+                    <img src={pendingImageUrl} alt="Pending attachment" className="h-10 rounded object-contain" />
                     <button onClick={() => setPendingImageUrl(null)} className="ml-auto text-text-muted hover:text-text-primary">
                       <X size={12} />
                     </button>

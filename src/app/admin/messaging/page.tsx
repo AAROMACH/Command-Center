@@ -568,7 +568,7 @@ export default function AdminMessagingPage() {
                             )}>
                               {m.body && <p>{m.body}</p>}
                               {m.imageUrls?.map((url, i) => (
-                                <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
+                                <img loading="lazy" decoding="async" key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                               ))}
                               <p className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">
                                 {format(parseISO(m.timestamp || m.createdAt || new Date().toISOString()), 'h:mm a')}
@@ -732,7 +732,7 @@ export default function AdminMessagingPage() {
                             )}>
                               {m.body && <p>{m.body}</p>}
                               {m.imageUrls?.map((url, i) => (
-                                <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
+                                <img loading="lazy" decoding="async" key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                               ))}
                               <p className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">
                                 {format(parseISO(m.timestamp || m.createdAt || new Date().toISOString()), 'h:mm a')}

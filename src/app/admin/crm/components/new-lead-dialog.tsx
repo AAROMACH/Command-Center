@@ -278,7 +278,7 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelCls}>Phone</Label>
-                  <Input placeholder="(555) 123-4567" value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} className={inputCls} />
+                  <Input type="tel" inputMode="tel" placeholder="(555) 123-4567" value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} className={inputCls} />
                 </div>
               </div>
             </section>

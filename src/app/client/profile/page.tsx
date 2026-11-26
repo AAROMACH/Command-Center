@@ -33,6 +33,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/empty-state';
+import { paymentTermsLabel } from '@/lib/quote-deposit';
 
 export default function ClientProfilePage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -45,10 +46,11 @@ export default function ClientProfilePage() {
     const [billingContactName, setBillingContactName] = useState("");
     const [billingEmail, setBillingEmail] = useState("");
     const [billingTerms, setBillingTerms] = useState("Net 30");
-    const [billingDelivery, setBillingDelivery] = useState("Portal");
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    // Which tab is open — Security edits nothing this page saves, so Save hides there.
+    const [openTab, setOpenTab] = useState('contact');
     const savedSnapshotRef = useRef<Record<string, unknown>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,16 +70,18 @@ export default function ClientProfilePage() {
                     setPhone(data.phone || '');
                     setAvatarUrl(data.avatarUrl);
                     setBillingContactName(data.billingDetails?.contactName || '');
-                    setBillingEmail(data.billingDetails?.email || '');
+                    // Top-level first: that's the one sends and QuickBooks use.
+                    // No sign-in-email fallback here — showing it would save it
+                    // as an explicit billing address on the next save.
+                    setBillingEmail(data.billingEmail || data.billingDetails?.email || '');
                     setBillingTerms(data.billingDetails?.terms || '');
-                    setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
                     savedSnapshotRef.current = {
                         name: data.name || '',
                         preferredName: data.preferredName || '',
                         phone: data.phone || '',
                         'billingDetails.contactName': data.billingDetails?.contactName || '',
                         'billingDetails.email': data.billingDetails?.email || '',
-                        'billingDetails.deliveryMethod': data.billingDetails?.deliveryMethod || 'Portal',
+                        billingEmail: data.billingEmail || null,
                     };
                 }
             });
@@ -119,7 +123,10 @@ export default function ClientProfilePage() {
                 phone,
                 'billingDetails.contactName': billingContactName,
                 'billingDetails.email': billingEmail,
-                'billingDetails.deliveryMethod': billingDelivery,
+                // Invoice/quote sends and the QuickBooks customer read top-level
+                // billingEmail, so write both or this field is ignored
+                // (see clientBillingEmail in lib/recipients).
+                billingEmail: billingEmail.trim() || null,
             };
             await auditFieldChange('users', currentUser.id, currentUser.id, currentUser.name || currentUser.id, savedSnapshotRef.current, updates);
             await updateDoc(doc(db, 'users', currentUser.id), updates);
@@ -134,6 +141,17 @@ export default function ClientProfilePage() {
 
     if (!mounted) return <PageLoading label="Loading profile…" />;
 
+    // Save sits at the bottom on phones (thumb reach), in the header on desktop.
+    // Only on the tabs whose fields it writes — on Security it saved nothing.
+    const mobileSave = (
+        <div className="sm:hidden sticky bottom-3 z-10">
+            <Button onClick={handleSave} disabled={isSaving} className="w-full h-11 shadow-lg">
+                {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
+                Save changes
+            </Button>
+        </div>
+    );
+
     return (
         <div className="max-w-5xl mx-auto space-y-5 text-left pb-24">
             <PageHeader
@@ -141,12 +159,12 @@ export default function ClientProfilePage() {
                 icon={User}
                 title="Profile"
                 subtitle="Your contact details, company and billing preferences."
-                actions={
+                actions={openTab !== 'security' ? (
                     <Button onClick={handleSave} disabled={isSaving} className="hidden sm:inline-flex">
                         {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
                         Save changes
                     </Button>
-                }
+                ) : undefined}
             />
 
             {/* Who you are — compact so the tabs start high on a phone. */}
@@ -186,7 +204,7 @@ export default function ClientProfilePage() {
                 </CardContent>
             </Card>
 
-            <SettingsTabs tabs={[
+            <SettingsTabs onTabChange={setOpenTab} tabs={[
                 { id: 'contact', label: 'Contact', icon: User, content: (<>
                             <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
                                 <CardHeader className="text-left">
@@ -207,11 +225,11 @@ export default function ClientProfilePage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[12px] font-medium text-text-secondary">Email</Label>
-                                            <Input value={currentUser?.email || ''} readOnly className="bg-bg-primary opacity-60 cursor-not-allowed" />
+                                            <Input value={currentUser?.email || ''} readOnly disabled className="bg-bg-primary" />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[12px] font-medium text-text-secondary">Phone</Label>
-                                            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-bg-primary" />
+                                            <Input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-bg-primary" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -234,6 +252,7 @@ export default function ClientProfilePage() {
                                     </div>
                                 </CardContent>
                             </Card>
+                            {mobileSave}
                 </>) },
                 { id: 'billing', label: 'Billing', icon: CreditCard, content: (<>
                             <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
@@ -245,7 +264,9 @@ export default function ClientProfilePage() {
                                     <CardDescription>Who receives invoices and how they are delivered.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Same breakpoint as the Contact card above, so both
+                                        cards go two-up at the same width. */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[12px] font-medium text-text-secondary">Billing contact name</Label>
                                             <Input
@@ -260,6 +281,9 @@ export default function ClientProfilePage() {
                                             <div className="relative">
                                                 <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                                                 <Input
+                                                    type="email"
+                                                    inputMode="email"
+                                                    autoComplete="email"
                                                     placeholder="ap@company.com"
                                                     value={billingEmail}
                                                     onChange={(e) => setBillingEmail(e.target.value)}
@@ -269,21 +293,8 @@ export default function ClientProfilePage() {
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[12px] font-medium text-text-secondary">Payment terms</Label>
-                                            <Input value={billingTerms || 'Not set'} readOnly disabled className="bg-bg-primary" />
+                                            <Input value={billingTerms ? paymentTermsLabel(billingTerms) : 'Not set'} readOnly disabled className="bg-bg-primary" />
                                             <p className="text-[11px] text-text-muted">Set by Aaromach. Contact us to change your terms.</p>
-                                        </div>
-                                        <div className="space-y-2 text-left">
-                                            <Label className="text-[12px] font-medium text-text-secondary">Invoice delivery</Label>
-                                            <Select value={billingDelivery} onValueChange={setBillingDelivery}>
-                                                <SelectTrigger className="bg-bg-primary">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Email">Email only</SelectItem>
-                                                    <SelectItem value="Portal">Portal only</SelectItem>
-                                                    <SelectItem value="Both">Email and portal</SelectItem>
-                                                </SelectContent>
-                                            </Select>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -302,7 +313,7 @@ export default function ClientProfilePage() {
                                             <CreditCard size={18} />
                                         </div>
                                         <div className="text-left space-y-0.5">
-                                            <p className="text-[13px] font-semibold text-text-primary">{billingTerms || 'Net 30'} terms</p>
+                                            <p className="text-[13px] font-semibold text-text-primary">{paymentTermsLabel(billingTerms)} terms</p>
                                             <p className="text-[12px] text-text-muted">Pay by ACH, EFT or certified check. Payment instructions are on each invoice.</p>
                                         </div>
                                     </div>
@@ -316,6 +327,7 @@ export default function ClientProfilePage() {
                                     </Button>
                                 </CardContent>
                             </Card>
+                            {mobileSave}
                 </>) },
                 { id: 'security', label: 'Security', icon: Key, content: (<>
                     <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm text-left">
@@ -332,14 +344,6 @@ export default function ClientProfilePage() {
                     <p className="text-[12px] text-text-muted px-1 flex items-center gap-1.5"><ShieldCheck size={13} className="text-text-green" /> Full access to your company&apos;s jobs, requests and invoices.</p>
                 </>) },
             ]} />
-
-            {/* Save sits at the bottom on phones (thumb reach), in the header on desktop. */}
-            <div className="sm:hidden sticky bottom-3 z-10">
-                <Button onClick={handleSave} disabled={isSaving} className="w-full h-11 shadow-lg">
-                    {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
-                    Save changes
-                </Button>
-            </div>
 
             <ChangePasswordDialog
                 isOpen={isPasswordDialogOpen}

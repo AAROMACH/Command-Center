@@ -884,7 +884,7 @@ export default function TechEarningsPage() {
                                 <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleReceiptPhotoSelect} />
                                 {receiptPhotoUrl ? (
                                     <div className="flex items-center gap-3 p-2 rounded-lg border border-border-sub bg-bg-secondary">
-                                        <img src={receiptPhotoUrl} alt="Receipt" className="h-12 w-12 rounded object-cover shrink-0 cursor-pointer" onClick={() => window.open(receiptPhotoUrl, '_blank')} />
+                                        <img loading="lazy" decoding="async" src={receiptPhotoUrl} alt="Receipt" className="h-12 w-12 rounded object-cover shrink-0 cursor-pointer" onClick={() => window.open(receiptPhotoUrl, '_blank')} />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[12px] font-semibold text-text-primary">Receipt uploaded</p>
                                             <p className="text-[12px] text-text-muted">Tap the image to view</p>

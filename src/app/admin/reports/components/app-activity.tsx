@@ -24,6 +24,7 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { isTech } from '@/lib/permissions';
 import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter, X, Activity as ActivityIcon } from 'lucide-react';
 import { cn, isInactiveTechnician } from '@/lib/utils';
+import { categoryForActivity, categoryStyle } from '@/lib/notification-categories';
 import type { WorkOrder, Technician, WeeklyLog, Invoice } from '@/lib/types';
 import { effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
@@ -74,36 +75,36 @@ export function AppActivity() {
     const currentUser = technicians.find(t => t.id === currentUserId) || null;
     const canSeePay = isSuperAdmin(currentUser) || isPayAdmin(currentUser);
 
-    type TimelineEvent = { id: string; timestamp: string; type: string; eventLabel: string; entity: string; techName?: string; techId?: string; clientName?: string; color: string; batchId?: string; };
+    type TimelineEvent = { id: string; timestamp: string; type: string; eventLabel: string; entity: string; techName?: string; techId?: string; clientName?: string; batchId?: string; };
 
     const timelineEvents = useMemo((): TimelineEvent[] => {
         const events: TimelineEvent[] = [];
         assignments.forEach(wo => {
             const techId = wo.assignedTechnicianId || wo.techId;
             const tech = technicians.find(t => t.id === techId);
-            if ((wo as any).assignedAt) events.push({ id: `asmt-${wo.id}`, timestamp: (wo as any).assignedAt, type: 'assignment', eventLabel: 'Assignment Created', entity: wo.title || wo.description || wo.id.toUpperCase(), techName: tech?.name, techId, clientName: wo.clientName, color: 'text-accent-gold' });
-            if (['completed','checked-out'].includes(wo.status) && (wo as any).updatedAt) events.push({ id: `asmt-done-${wo.id}`, timestamp: (wo as any).updatedAt, type: 'assignment', eventLabel: wo.status === 'completed' ? 'Job Completed' : 'Checked Out', entity: wo.title || wo.description || wo.id.toUpperCase(), techName: tech?.name, techId, clientName: wo.clientName, color: 'text-text-green' });
+            if ((wo as any).assignedAt) events.push({ id: `asmt-${wo.id}`, timestamp: (wo as any).assignedAt, type: 'assignment', eventLabel: 'Assignment Created', entity: wo.title || wo.description || wo.id.toUpperCase(), techName: tech?.name, techId, clientName: wo.clientName });
+            if (['completed','checked-out'].includes(wo.status) && (wo as any).updatedAt) events.push({ id: `asmt-done-${wo.id}`, timestamp: (wo as any).updatedAt, type: 'assignment', eventLabel: wo.status === 'completed' ? 'Job Completed' : 'Checked Out', entity: wo.title || wo.description || wo.id.toUpperCase(), techName: tech?.name, techId, clientName: wo.clientName });
         });
-        workOrders.forEach(wo => { if ((wo as any).createdAt) events.push({ id: `wo-${wo.id}`, timestamp: (wo as any).createdAt, type: 'work_order', eventLabel: 'Work Order Created', entity: wo.title || wo.description || wo.id.toUpperCase(), clientName: wo.clientName, color: 'text-text-muted' }); });
+        workOrders.forEach(wo => { if ((wo as any).createdAt) events.push({ id: `wo-${wo.id}`, timestamp: (wo as any).createdAt, type: 'work_order', eventLabel: 'Work Order Created', entity: wo.title || wo.description || wo.id.toUpperCase(), clientName: wo.clientName }); });
         weeklyLogs.forEach(log => {
             const tech = technicians.find(t => t.id === log.techId);
-            if (log.submittedAt) events.push({ id: `log-sub-${log.id}`, timestamp: log.submittedAt, type: 'log', eventLabel: 'Weekly Log Submitted', entity: `Week of ${log.weekOf}`, techName: tech?.name, techId: log.techId, color: 'text-accent-gold' });
+            if (log.submittedAt) events.push({ id: `log-sub-${log.id}`, timestamp: log.submittedAt, type: 'log', eventLabel: 'Weekly Log Submitted', entity: `Week of ${log.weekOf}`, techName: tech?.name, techId: log.techId });
             // Approval at its real time (it used to borrow the submitted time).
             // Logs approved before approvals were timestamped have no time to show.
             const approvedAt = (log as { approvedAt?: string | null }).approvedAt;
             const approvedBy = (log as { approvedByName?: string | null }).approvedByName;
-            if (log.status === 'Approved' && approvedAt) events.push({ id: `log-appr-${log.id}`, timestamp: approvedAt, type: 'payroll', eventLabel: 'Payroll Approved Log', entity: `Week of ${log.weekOf}${approvedBy ? ` — by ${approvedBy}` : ''}`, techName: tech?.name, techId: log.techId, color: 'text-text-green' });
+            if (log.status === 'Approved' && approvedAt) events.push({ id: `log-appr-${log.id}`, timestamp: approvedAt, type: 'payroll', eventLabel: 'Payroll Approved Log', entity: `Week of ${log.weekOf}${approvedBy ? ` — by ${approvedBy}` : ''}`, techName: tech?.name, techId: log.techId });
             // Paid out (the step after approval).
-            if (log.status === 'Approved' && log.paid && log.paidAt) events.push({ id: `log-paid-${log.id}`, timestamp: log.paidAt, type: 'payroll_paid', eventLabel: 'Payroll Paid Out', entity: `Week of ${log.weekOf}${log.paidByName ? ` — by ${log.paidByName}` : ''}`, techName: tech?.name, techId: log.techId, color: 'text-text-green' });
+            if (log.status === 'Approved' && log.paid && log.paidAt) events.push({ id: `log-paid-${log.id}`, timestamp: log.paidAt, type: 'payroll_paid', eventLabel: 'Payroll Paid Out', entity: `Week of ${log.weekOf}${log.paidByName ? ` — by ${log.paidByName}` : ''}`, techName: tech?.name, techId: log.techId });
         });
         importBatches.forEach(b => {
             if (!b.importedAt) return;
             const n = b.count || 0;
             const clients = (b.clients || []).slice(0, 3).join(', ');
-            events.push({ id: `import-${b.id}`, timestamp: b.importedAt, type: 'dispatch', eventLabel: 'Dispatch Imported Jobs', entity: `${n} job${n === 1 ? '' : 's'}${clients ? ` · ${clients}${(b.clients || []).length > 3 ? '…' : ''}` : ''}${b.importedByName ? ` — by ${b.importedByName}` : ''}`, color: 'text-brand-blue', batchId: b.id });
+            events.push({ id: `import-${b.id}`, timestamp: b.importedAt, type: 'dispatch', eventLabel: 'Dispatch Imported Jobs', entity: `${n} job${n === 1 ? '' : 's'}${clients ? ` · ${clients}${(b.clients || []).length > 3 ? '…' : ''}` : ''}${b.importedByName ? ` — by ${b.importedByName}` : ''}`, batchId: b.id });
         });
         invoices.forEach(inv => {
-            if (inv.issueDate) events.push({ id: `inv-${inv.id}`, timestamp: inv.issueDate, type: 'invoice', eventLabel: 'Invoice Issued', entity: `#${(inv as any).invoiceNumber || inv.id} — $${(inv.total || 0).toFixed(2)}`, clientName: inv.clientName, color: 'text-text-muted' });
+            if (inv.issueDate) events.push({ id: `inv-${inv.id}`, timestamp: inv.issueDate, type: 'invoice', eventLabel: 'Invoice Issued', entity: `#${(inv as any).invoiceNumber || inv.id} — $${(inv.total || 0).toFixed(2)}`, clientName: inv.clientName });
         });
         return events.filter(e => !!e.timestamp).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     }, [assignments, workOrders, weeklyLogs, invoices, technicians, importBatches]);
@@ -147,13 +148,21 @@ export function AppActivity() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
                                     <SelectItem value="all" className="text-[10px] font-bold">All events</SelectItem>
-                                    <SelectItem value="assignment" className="text-[10px] font-bold">Assignments</SelectItem>
-                                    <SelectItem value="work_order" className="text-[10px] font-bold">Work orders</SelectItem>
-                                    <SelectItem value="log" className="text-[10px] font-bold">Weekly logs</SelectItem>
-                                    <SelectItem value="payroll" className="text-[10px] font-bold">Payroll approvals</SelectItem>
-                                    <SelectItem value="payroll_paid" className="text-[10px] font-bold">Payroll paid</SelectItem>
-                                    <SelectItem value="dispatch" className="text-[10px] font-bold">Dispatch imports</SelectItem>
-                                    <SelectItem value="invoice" className="text-[10px] font-bold">Invoices</SelectItem>
+                                    {/* The dot is the kind's colour, the same one the row and the
+                                        notification bell use for it. */}
+                                    {([
+                                        ['assignment', 'Assignments'], ['work_order', 'Work orders'],
+                                        ['log', 'Weekly logs'], ['payroll', 'Payroll approvals'],
+                                        ['payroll_paid', 'Payroll paid'], ['dispatch', 'Dispatch imports'],
+                                        ['invoice', 'Invoices'],
+                                    ] as const).map(([value, label]) => (
+                                        <SelectItem key={value} value={value} className="text-[10px] font-bold">
+                                            <span className="flex items-center gap-2">
+                                                <span className={cn('h-2 w-2 rounded-full', categoryStyle(categoryForActivity(value)).dot)} />
+                                                {label}
+                                            </span>
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <DateRangeButton value={timelineDateRange} onChange={setTimelineDateRange} />
@@ -178,16 +187,23 @@ export function AppActivity() {
                                 {timelinePageEvents.map(event => {
                                     let tsDisplay = '';
                                     try { const d = new Date(event.timestamp); tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a'); } catch { tsDisplay = event.timestamp; }
-                                    const typeColors: Record<string, string> = { assignment: 'border-l-accent-gold', work_order: 'border-l-border-main', log: 'border-l-brand-red', invoice: 'border-l-text-green', payroll: 'border-l-text-green', payroll_paid: 'border-l-text-green', dispatch: 'border-l-brand-blue' };
+                                    // Same seven kinds, colours and icons as the notification bell
+                                    // (lib/notification-categories), so blue means jobs and green
+                                    // means money in both places.
+                                    const kind = categoryStyle(categoryForActivity(event.type));
                                     return (
                                         <div key={event.id}
                                             onClick={event.batchId ? () => setOpenBatch(importBatches.find(b => b.id === event.batchId) || null) : undefined}
-                                            className={cn('flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors', event.batchId && 'cursor-pointer', typeColors[event.type] || 'border-l-border-sub')}>
-                                            <div className="w-[120px] shrink-0 text-right">
+                                            className={cn('flex items-start gap-3 sm:gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors', event.batchId && 'cursor-pointer', kind.borderL)}>
+                                            <span className={cn('mt-0.5 hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg border sm:flex', kind.tile)}
+                                                title={kind.label} aria-label={kind.label}>
+                                                <kind.Icon size={13} />
+                                            </span>
+                                            <div className="w-[96px] shrink-0 text-right sm:w-[120px]">
                                                 <p className="text-[11px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className={cn('text-[10px] font-bold uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
+                                                <p className={cn('text-[10px] font-bold uppercase tracking-wide', kind.text)}>{event.eventLabel}</p>
                                                 <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     {event.techName && <span className="text-[11px] text-text-muted font-bold">{event.techName}</span>}

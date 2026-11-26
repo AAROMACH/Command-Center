@@ -258,7 +258,7 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
                   <div className="flex items-center gap-2">
                     <Input value={c.name} onChange={e => setCloset(i, { name: e.target.value })} placeholder="MDF / IDF-1" className={cn(inputCls, 'w-[160px] font-bold')} />
                     <Input value={c.location} onChange={e => setCloset(i, { location: e.target.value })} placeholder="Room 104, 1st floor" className={cn(inputCls, 'flex-1')} />
-                    <button onClick={() => setD(p => p && ({ ...p, closets: p.closets.filter((_, j) => j !== i) }))} className="p-1.5 text-text-muted hover:text-text-red"><Trash2 size={13} /></button>
+                    <button onClick={() => setD(p => p && ({ ...p, closets: p.closets.filter((_, j) => j !== i) }))} aria-label="Remove closet" className="p-1.5 text-text-muted hover:text-text-red"><Trash2 size={13} /></button>
                   </div>
                   <div className="flex flex-wrap gap-x-5">
                     <Check label="New rack needed" checked={c.rackNeeded} onChange={b => setCloset(i, { rackNeeded: b })} />
@@ -338,9 +338,9 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
                     <a href={p.url} target="_blank" rel="noreferrer" className="block aspect-square rounded-md overflow-hidden border border-border-sub bg-bg-tertiary">
                       {/\.pdf/i.test(p.storagePath)
                         ? <span className="h-full flex items-center justify-center text-[10px] font-bold text-text-muted">PDF</span>
-                        : <img src={p.url} alt={p.caption || 'Survey photo'} className="h-full w-full object-cover" />}
+                        : <img loading="lazy" decoding="async" src={p.url} alt={p.caption || 'Survey photo'} className="h-full w-full object-cover" />}
                     </a>
-                    <button onClick={() => removePhoto(i)} className="absolute top-1 right-1 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100"><X size={11} /></button>
+                    <button onClick={() => removePhoto(i)} aria-label="Remove photo" className="absolute top-1 right-1 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100"><X size={11} /></button>
                     <input value={p.caption || ''} placeholder="Caption"
                       onChange={e => setD(prev => prev && ({ ...prev, photos: prev.photos.map((x, j) => j === i ? { ...x, caption: e.target.value } : x) }))}
                       className="mt-1 w-full bg-transparent text-[12px] text-text-muted focus:outline-none focus:text-text-primary" />

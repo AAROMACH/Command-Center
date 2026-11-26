@@ -7,6 +7,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { isAdmin, isSales } from '@/lib/permissions';
 import { sendEmail } from '@/lib/server/notify-delivery';
 import { cleanRecipients } from '@/lib/recipients';
+import { recipientFor } from '@/lib/server/client-recipients';
 import { canApproveQuotes } from '@/lib/approvals';
 import { randomBytes } from 'crypto';
 
@@ -18,6 +19,31 @@ import { randomBytes } from 'crypto';
  */
 const money = (n: unknown) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 const COOLDOWN_MIN = 10;
+
+/**
+ * GET ?quoteId= — who this quote would go to and why, with the client's other
+ * contacts for the Send dialog's picker. Admin-only, same as POST.
+ */
+export async function GET(req: NextRequest) {
+  const fs = getFirestore(adminApp);
+  try {
+    const uid = (await getAuth(adminApp).verifyIdToken((req.headers.get('authorization') || '').replace(/^Bearer /, ''))).uid;
+    const u = (await fs.doc(`users/${uid}`).get()).data();
+    if (!u || !(isAdmin(u as never) || isSales(u as never))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+
+  const quoteId = req.nextUrl.searchParams.get('quoteId') || '';
+  const snap = quoteId ? await fs.doc(`quotes/${quoteId}`).get() : null;
+  if (!snap?.exists) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+  const q = snap.data() || {};
+
+  const onQuote = String(q.customerEmail || '').trim();
+  if (!q.clientId) return NextResponse.json({ to: onQuote, why: onQuote ? 'On the quote' : 'No address on file', options: [] });
+  const { resolved, options } = await recipientFor('quote', q.clientId);
+  return onQuote
+    ? NextResponse.json({ to: onQuote, why: 'On the quote', options })
+    : NextResponse.json({ to: resolved.email, why: resolved.reason, options });
+}
 
 export async function POST(req: NextRequest) {
   const fs = getFirestore(adminApp);
@@ -56,8 +82,9 @@ export async function POST(req: NextRequest) {
   if (!recipients.length) {
     let fallback: string = String(q.customerEmail || '').trim();
     if (!fallback && q.clientId) {
-      const c = (await fs.doc(`users/${q.clientId}`).get()).data();
-      fallback = String(c?.billingEmail || c?.email || '').trim();
+      // A quote goes to the buyer who asked for it, which is often not the
+      // accounts payable address an invoice uses (lib/client-contacts).
+      fallback = (await recipientFor('quote', q.clientId)).resolved.email;
     }
     recipients = cleanRecipients(fallback);
   }

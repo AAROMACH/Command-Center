@@ -319,9 +319,9 @@ export default function AccountsPage() {
                           <p className="text-[10px] text-text-muted">{[c.title, contactRoleLabel(c.role)].filter(Boolean).join(' · ')}</p>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {!c.isPrimary && <button title="Make primary" onClick={() => makePrimary(c)} className="p-1 text-text-muted hover:text-accent-gold"><Star size={11} /></button>}
-                          <button title="Edit" onClick={() => setContactForm({ id: c.id, name: c.name, title: c.title || '', email: c.email || '', phone: c.phone || '', role: c.role || '', notes: c.notes || '' })} className="p-1 text-text-muted hover:text-text-primary"><Pencil size={11} /></button>
-                          <button title="Remove" onClick={() => removeContact(c)} className="p-1 text-text-muted hover:text-text-red"><Trash2 size={11} /></button>
+                          {!c.isPrimary && <button title="Make primary" aria-label="Make primary contact" onClick={() => makePrimary(c)} className="p-1 text-text-muted hover:text-accent-gold"><Star size={11} /></button>}
+                          <button title="Edit" aria-label="Edit contact" onClick={() => setContactForm({ id: c.id, name: c.name, title: c.title || '', email: c.email || '', phone: c.phone || '', role: c.role || '', notes: c.notes || '' })} className="p-1 text-text-muted hover:text-text-primary"><Pencil size={11} /></button>
+                          <button title="Remove" aria-label="Remove contact" onClick={() => removeContact(c)} className="p-1 text-text-muted hover:text-text-red"><Trash2 size={11} /></button>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">

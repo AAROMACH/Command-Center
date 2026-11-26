@@ -27,6 +27,9 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { jobDateTimeValue, mergeJobs } from '@/lib/jobs';
+import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS } from '@/lib/quote-deposit';
+import { useAuth } from '@/contexts/auth-context';
+import { staffBrief } from '@/components/staff-picker';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -43,6 +46,7 @@ const ACCOUNT_STATUS_OPTIONS = [
 
 export default function AdminClientsPage() {
     const router = useRouter();
+    const { user: me } = useAuth();
     const [clients, setClients] = useState<Technician[]>([]);
     const [sites, setSites] = useState<Site[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -63,7 +67,7 @@ export default function AdminClientsPage() {
         email: '',
         phone: '',
         accountStatus: 'active',
-        billingTerms: 'Net 30',
+        billingTerms: DEFAULT_PAYMENT_TERMS,
     });
     const { toast } = useToast();
 
@@ -157,12 +161,13 @@ export default function AdminClientsPage() {
                 phone: form.phone,
                 roles: ['client'],
                 role: 'client',
+                // Whoever added them is their contact here until changed.
+                ...(me ? { accountManagerId: me.id, accountManager: staffBrief(me) } : {}),
                 accountStatus: form.accountStatus,
                 billingDetails: {
                     contactName: form.name,
                     email: form.email,
                     terms: form.billingTerms,
-                    deliveryMethod: 'Email',
                 },
                 skills: [],
                 availability: {},
@@ -173,7 +178,7 @@ export default function AdminClientsPage() {
                 createdAt: new Date().toISOString(),
             });
             toast({ title: 'Client created', description: `${form.clientCompany} has been added.` });
-            setForm({ clientCompany: '', name: '', email: '', phone: '', accountStatus: 'active', billingTerms: 'Net 30' });
+            setForm({ clientCompany: '', name: '', email: '', phone: '', accountStatus: 'active', billingTerms: DEFAULT_PAYMENT_TERMS });
             setIsNewOpen(false);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Failed to create client', description: e.message });
@@ -415,8 +420,8 @@ export default function AdminClientsPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
-                                        {['Net 15', 'Net 30', 'Net 60', 'Due on Receipt'].map(t => (
-                                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                                        {PAYMENT_TERMS.map(t => (
+                                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>

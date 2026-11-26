@@ -41,6 +41,8 @@ import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
 import { statusLabel } from '@/lib/status-styles';
 import { jobDateTimeValue } from '@/lib/jobs';
+import { clientBillingEmail } from '@/lib/recipients';
+import { paymentTermsLabel, normalizeTerms } from '@/lib/quote-deposit';
 
 /** Invoice numbers are stored with or without the INV- prefix. */
 const invLabel = (n?: string) => (n || '').toUpperCase().startsWith('INV') ? (n || '') : `INV-${n || ''}`;
@@ -145,7 +147,7 @@ export default function ClientFinancialsPage() {
                     icon={Coins}
                     onClick={() => document.getElementById('plan')?.scrollIntoView({ behavior: 'smooth' })}
                     value={currentSub ? <span className="capitalize">{currentPlan?.name || 'Service plan'}</span> : 'No plan'}
-                    sub={<span className="flex items-center gap-1">{currentPlan ? `${currentPlan.benefits.responseHours}-hour response` : `${currentUser?.billingDetails?.terms || 'Net 30'} terms`}<ChevronRight size={12} /></span>}
+                    sub={<span className="flex items-center gap-1">{currentPlan ? `${currentPlan.benefits.responseHours}-hour response` : `${paymentTermsLabel(normalizeTerms(currentUser?.billingDetails?.terms))} terms`}<ChevronRight size={12} /></span>}
                 />
             </div>
 
@@ -258,7 +260,7 @@ export default function ClientFinancialsPage() {
                                 <p className="text-[13px] font-semibold text-text-primary">{currentUser?.billingDetails?.contactName || 'Not set'}</p>
                                 <div className="flex items-center gap-2 text-[12px] text-text-muted">
                                     <Mail size={12} />
-                                    <span>{currentUser?.billingDetails?.email || 'No email on file'}</span>
+                                    <span>{clientBillingEmail(currentUser) || 'No email on file'}</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub/50">
@@ -266,12 +268,8 @@ export default function ClientFinancialsPage() {
                                     <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Payment terms</p>
                                     <div className="flex items-center gap-1.5 text-[13px] font-medium text-text-primary">
                                         <Clock size={12} className="text-text-muted" />
-                                        {currentUser?.billingDetails?.terms || 'Net 30'}
+                                        {paymentTermsLabel(normalizeTerms(currentUser?.billingDetails?.terms))}
                                     </div>
-                                </div>
-                                <div className="space-y-1 text-right">
-                                    <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Delivery</p>
-                                    <p className="text-[13px] font-medium text-text-primary">{currentUser?.billingDetails?.deliveryMethod || 'Portal'}</p>
                                 </div>
                             </div>
                         </div>

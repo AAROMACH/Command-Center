@@ -32,6 +32,7 @@ import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 import { PageHeader } from '@/components/page-header';
 import { SettingsTabs } from '@/components/settings-tabs';
 import { cn } from '@/lib/utils';
+import { AccountManagerCard } from '@/components/account-manager-card';
 
 export default function ClientSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -114,6 +115,7 @@ export default function ClientSettingsPage() {
                     </Card>
                 ) },
                 { id: 'account', label: 'Account', icon: Building2, content: (<>
+                    <AccountManagerCard client={currentUser} className="rounded-xl bg-bg-secondary border-border-main shadow-sm" />
                     <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
                         <CardHeader className="text-left">
                             <CardTitle className="text-base font-semibold">Account status</CardTitle>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Bell, AlertTriangle, CheckCircle2, Eye, Lock, ArrowUpDown, SlidersHorizontal, Check, X } from 'lucide-react';
+import { Bell, AlertTriangle, CheckCircle2, CheckCheck, Eye, Lock, ArrowUpDown, SlidersHorizontal, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -12,11 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isAfter, isToday } from 'date-fns';
+import { format, parseISO, isAfter, isToday, isYesterday, isSameYear } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { useAuth } from '@/contexts/auth-context';
 import { entityHref } from '@/lib/notification-links';
 import {
@@ -227,6 +227,52 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
   // A 'critical' broadcast is an admin shouting on purpose — it keeps the red
   // warning treatment. Everything else is coloured and iconed by its kind, so
   // pay, jobs and messages are telling apart at a glance.
+  /**
+   * Mark a whole list read in one go. Notification docs get `read: true`;
+   * broadcasts get acknowledged on the user doc (and locally, so it clears
+   * instantly and still works offline) — the same two paths the single
+   * mark-as-read uses. Pinned broadcasts are skipped: they can't be dismissed.
+   *
+   * Always operates on what is currently SHOWN, so with a filter on it clears
+   * that kind and nothing else — "mark all read" never reaches past what you
+   * can see.
+   */
+  const [marking, setMarking] = useState(false);
+  const markRead = async (
+    items: { id: string; isLocked?: boolean }[],
+    /** Notification doc ids already stripped of the "notif:" prefix. */
+    rawIds: string[] = [],
+  ) => {
+    const live = items.filter(m => !m.isLocked);
+    const notifIds = [...rawIds, ...live.filter(m => m.id.startsWith('notif:')).map(m => m.id.slice(6))];
+    const castIds = live.filter(m => !m.id.startsWith('notif:')).map(m => m.id);
+    const total = notifIds.length + castIds.length;
+    if (!total) return;
+    setMarking(true);
+    try {
+      // A write batch caps at 500 — chunked, since the history window is 500.
+      for (let i = 0; i < notifIds.length; i += 400) {
+        const batch = writeBatch(db);
+        notifIds.slice(i, i + 400).forEach(id => batch.update(doc(db, 'notifications', id), { read: true }));
+        await batch.commit();
+      }
+      if (castIds.length && user?.id) {
+        await updateDoc(doc(db, 'users', user.id), { acknowledgedBroadcastIds: arrayUnion(...castIds) });
+      }
+      if (castIds.length) {
+        try {
+          const stored = JSON.parse(localStorage.getItem('aaromach_cleared_messages') || '[]') as string[];
+          localStorage.setItem('aaromach_cleared_messages', JSON.stringify([...new Set([...stored, ...castIds])]));
+        } catch { /* storage blocked */ }
+      }
+      setPersonal(prev => prev.filter(m => !live.some(i => i.id === m.id)));
+      fetchMessages();
+      toast({ title: `${total} marked read` });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Could not mark them read', description: (e as Error)?.message });
+    } finally { setMarking(false); }
+  };
+
   const getIcon = (type: string) => (type === 'critical' ? AlertTriangle : Bell);
   const tileFor = (type: string, category: NotificationCategory) =>
     type === 'critical'
@@ -326,6 +372,13 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-[14px] font-semibold text-text-primary">Notifications</h3>
               <div className="flex items-center gap-1">
+                {view === 'unread' && shownUnread.some(m => !m.isLocked) && (
+                  <button type="button" onClick={() => markRead(shownUnread)} disabled={marking}
+                      title={cats.size ? 'Mark the kinds you are showing read' : 'Mark every unread alert read'}
+                      className="inline-flex h-8 items-center gap-1 rounded-md border border-border-sub px-2 text-[11px] font-medium text-text-muted transition-colors hover:text-text-primary disabled:opacity-50">
+                    <CheckCheck size={13} /> {marking ? 'Marking…' : cats.size ? 'Mark these' : 'Mark all'}
+                  </button>
+                )}
                 <button type="button" onClick={() => setPanel(p => (p === 'sort' ? null : 'sort'))}
                     aria-expanded={panel === 'sort'} aria-label={`Sort: ${sortLabel}`} title={`Sort: ${sortLabel}`}
                     className={cn('inline-flex h-8 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors',
@@ -431,17 +484,18 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
                                         <Icon size={14} />
                                     </div>
                                     <div className="space-y-0.5 min-w-0 flex-1">
-                                        <div className="flex justify-between items-start gap-2">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                <p className="text-[13px] font-semibold text-text-primary leading-tight line-clamp-1">{msg.subject}</p>
-                                                {msg.isLocked && <Lock size={11} className="text-brand-red shrink-0" />}
-                                            </div>
-                                            <span className="text-[11px] text-text-muted whitespace-nowrap">{stampLabel(msg.timestamp)}</span>
+                                        {/* The title keeps the full width here — this row also
+                                            reserves space for the mark-as-read button, so the
+                                            day-and-time stamp sits on the meta line below. */}
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <p className="text-[13px] font-semibold text-text-primary leading-tight line-clamp-1">{msg.subject}</p>
+                                            {msg.isLocked && <Lock size={11} className="text-brand-red shrink-0" />}
                                         </div>
                                         <p className="text-[12px] text-text-secondary leading-relaxed line-clamp-2 text-left">{msg.body}</p>
-                                        {msg.senderName && (
-                                            <p className="text-[11px] text-text-muted pt-0.5">From {msg.senderName}</p>
-                                        )}
+                                        <p className="flex flex-wrap items-center gap-x-1.5 pt-0.5 text-[11px] text-text-muted">
+                                            <span title={stampFull(msg.timestamp)}>{stampLabel(msg.timestamp)}</span>
+                                            {msg.senderName && <><span aria-hidden="true">·</span><span>From {msg.senderName}</span></>}
+                                        </p>
                                     </div>
                                 </div>
                                 
@@ -564,10 +618,19 @@ export function NotificationBell({ compact = false }: { compact?: boolean } = {}
               : `${shownRecent.length} of ${recent.length}`}
             {recent.length >= HISTORY_MAX ? ' · newest 500' : ''}
           </p>
-          {cats.size > 0 && (
-            <button type="button" onClick={() => setCats(new Set())}
-                className="text-[12px] font-medium text-brand-red hover:underline">Clear filters</button>
-          )}
+          <div className="flex items-center gap-3">
+            {shownRecent.some(n => !n.read) && (
+              <button type="button" disabled={marking}
+                  onClick={() => markRead([], shownRecent.filter(n => !n.read).map(n => n.id))}
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-red hover:underline disabled:opacity-50">
+                <CheckCheck size={13} /> {marking ? 'Marking…' : cats.size ? 'Mark these read' : 'Mark all read'}
+              </button>
+            )}
+            {cats.size > 0 && (
+              <button type="button" onClick={() => setCats(new Set())}
+                  className="text-[12px] font-medium text-text-muted hover:text-text-primary">Clear filters</button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -596,7 +659,7 @@ function AlertRow({ n, onOpen }: { n: HistoryRow; onOpen: (n: HistoryRow) => voi
             {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-red" aria-label="Unread" />}
             <span className={cn('text-[13px] leading-tight line-clamp-1', n.read ? 'text-text-secondary' : 'font-semibold text-text-primary')}>{n.title}</span>
           </span>
-          <span className="shrink-0 text-[11px] text-text-muted">{stampLabel(n.timestamp)}</span>
+          <span className="shrink-0 text-[11px] text-text-muted" title={stampFull(n.timestamp)}>{stampLabel(n.timestamp)}</span>
         </span>
         <span className="block text-[12px] text-text-muted line-clamp-2">{n.body}</span>
       </span>
@@ -604,12 +667,31 @@ function AlertRow({ n, onOpen }: { n: HistoryRow; onOpen: (n: HistoryRow) => voi
   );
 }
 
-/** "3:15 PM" for today, "Oct 14" for anything older. */
+/**
+ * When an alert landed — the time AND the day, not one or the other. It used
+ * to show "3:15 PM" with no date for today and "Oct 14" with no time for
+ * anything older, so you could never tell both from the list.
+ *
+ * "Today 3:15 PM" · "Yesterday 3:15 PM" · "Nov 24, 3:15 PM", with the year
+ * added when it isn't this one (the 30-day window straddles New Year).
+ */
 function stampLabel(ts: string): string {
   try {
     const d = parseISO(ts);
     if (isNaN(d.getTime())) return '';
-    return isToday(d) ? format(d, 'h:mm a') : format(d, 'MMM d');
+    const time = format(d, 'h:mm a');
+    if (isToday(d)) return `Today ${time}`;
+    if (isYesterday(d)) return `Yesterday ${time}`;
+    return `${format(d, isSameYear(d, new Date()) ? 'MMM d' : 'MMM d, yyyy')}, ${time}`;
+  } catch { return ''; }
+}
+
+/** The exact moment, for the hover title: "Mon, Nov 24, 2026 at 3:15 PM". */
+function stampFull(ts: string): string {
+  try {
+    const d = parseISO(ts);
+    if (isNaN(d.getTime())) return '';
+    return format(d, "EEE, MMM d, yyyy 'at' h:mm a");
   } catch { return ''; }
 }
 

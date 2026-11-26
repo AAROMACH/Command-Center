@@ -1,5 +1,4 @@
 'use client';
-import { JobNumbers } from '@/components/work-order-id';
 
 import { subscribeHelperJobs } from '@/lib/tech-assignments';
 import { useState, useEffect, useMemo } from 'react';
@@ -9,7 +8,7 @@ import type { WeeklyLog, WorkOrder } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, AlertTriangle, ArrowDown, ArrowUp, Filter, RotateCcw, Search, X } from 'lucide-react';
+import { Activity, AlertTriangle, Filter, RotateCcw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isAssignedTo } from '@/lib/jobs';
 import { median } from '@/lib/customer-intel';
@@ -19,13 +18,9 @@ import { HBars } from '@/components/chart-bits';
 import dynamic from 'next/dynamic';
 // recharts is heavy: the chart loads after the page, same-height placeholder meanwhile.
 const PayChart = dynamic(() => import('./pay-chart'), { ssr: false, loading: () => <div className="h-[260px] w-full animate-pulse rounded-md bg-bg-tertiary/40" /> });
-import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { PageHeader } from '@/components/page-header';
 import { MyPerformance } from './my-performance';
 import { EmptyState, PageLoading } from '@/components/empty-state';
-import { StatusBadge } from '@/components/status-badge';
-import { SearchField } from '@/components/search-field';
 
 export default function TechActivityPage() {
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -66,15 +61,7 @@ export default function TechActivityPage() {
 
   const [f, setF] = useState<Filters>(DEFAULT_FILTERS);
   const set = (patch: Partial<Filters>) => setF(prev => ({ ...prev, ...patch }));
-  const [sortKey, setSortKey] = useState<SortKey>('date');
-  const [sortDir, setSortDir] = useState<1 | -1>(-1);
-  const sortBy = (k: SortKey) => {
-    if (k === sortKey) setSortDir(d => (d === 1 ? -1 : 1));
-    else { setSortKey(k); setSortDir(k === 'title' || k === 'customer' ? 1 : -1); }
-  };
-  const [openJob, setOpenJob] = useState<WorkOrder | null>(null);
 
-  const jobsById = useMemo(() => new Map(assignments.map(a => [a.id, a])), [assignments]);
   const all = useMemo(() => (currentTechId ? buildTechJobRows(assignments, weeklyLogs, currentTechId) : []), [assignments, weeklyLogs, currentTechId]);
   const customers = useMemo(() => [...new Set(all.map(r => r.customer))].sort(), [all]);
   const types = useMemo(() => [...new Set(all.map(r => r.type))].sort(), [all]);
@@ -137,16 +124,6 @@ export default function TechActivityPage() {
       .sort((a, b) => b.value - a.value).slice(0, 10);
   }, [sel]);
 
-  // History table
-  const q = f.search.trim().toLowerCase();
-  const table = useMemo(() => sel
-    .filter(r => !q || r.title.toLowerCase().includes(q) || r.customer.toLowerCase().includes(q) || r.id.toLowerCase().includes(q))
-    .sort((a, b) => {
-      const va = a[sortKey] ?? '', vb = b[sortKey] ?? '';
-      if (typeof va === 'number' && typeof vb === 'number') return sortDir * (va - vb);
-      return sortDir * String(va).localeCompare(String(vb));
-    }), [sel, q, sortKey, sortDir]);
-  const pager = usePaged(table, PAGE_SIZES_LARGE, 'tech-activity-jobs', [f, sortKey, sortDir]);
 
   const pendingVerification = useMemo(() => weeklyLogs.flatMap(l => l.items || []).filter(i => !i.confirmationStatus).length, [weeklyLogs]);
   const isDefault = JSON.stringify(f) === JSON.stringify(DEFAULT_FILTERS);
@@ -265,78 +242,19 @@ export default function TechActivityPage() {
           </Card>
         </div>
 
-        <Card className="rounded-xl shadow-sm bg-bg-secondary border-border-main">
-          <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
-            <div>
-              <CardTitle className="text-base font-semibold">Job history</CardTitle>
-              <CardDescription className="text-[12px]">{count(table.length)} job{table.length === 1 ? '' : 's'} · tap a job to open it · ~ = estimate until it's on a log</CardDescription>
-            </div>
-            <SearchField value={f.search} onChange={v => set({ search: v })} placeholder="Search job, customer or #" className="w-full sm:w-[260px]" />
-          </CardHeader>
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-[12px] tabular-nums">
-              <thead>
-                <tr className="border-b border-border-sub">
-                  {([
-                    ['date', 'Date', ''], ['title', 'Job', ''], ['customer', 'Customer', 'hidden md:table-cell'], ['type', 'Type', 'hidden lg:table-cell'],
-                    ['status', 'Status', 'hidden sm:table-cell'], ['pay', 'My pay', ''], ['payStatus', 'Pay status', ''],
-                  ] as [SortKey, string, string][]).map(([k, text, cls]) => (
-                    <th key={k} className={cn('px-3 py-2 table-header', k === 'pay' ? 'text-right' : 'text-left', cls)}
-                      aria-sort={k === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
-                      <button onClick={() => sortBy(k)} className="inline-flex items-center gap-1 hover:text-text-primary">
-                        {text}{k === sortKey && (sortDir > 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pager.items.map(r => (
-                  <tr key={r.id} onClick={() => setOpenJob(jobsById.get(r.id) || null)} className="border-b border-border-sub/60 cursor-pointer hover:bg-bg-tertiary/40">
-                    <td className="px-3 py-2 whitespace-nowrap">{dayLabel(r.date)}</td>
-                    <td className="px-3 py-2 max-w-[220px]">
-                      <p className="font-semibold text-[13px] text-text-primary truncate">{r.title}</p>
-                      {jobsById.get(r.id) && <JobNumbers wo={jobsById.get(r.id)!} className="mt-0.5" />}
-                      <p className="text-[11px] text-text-muted truncate md:hidden">{r.customer}</p>
-                      {r.role === 'helper' && <span className="text-[11px] font-medium text-text-muted">Helper</span>}
-                    </td>
-                    <td className="px-3 py-2 hidden md:table-cell max-w-[180px] truncate">{r.customer}</td>
-                    <td className="px-3 py-2 hidden lg:table-cell max-w-[160px] truncate">{r.type}</td>
-                    <td className="px-3 py-2 hidden sm:table-cell whitespace-nowrap"><StatusBadge kind="job" value={r.status} /></td>
-                    <td className={cn('px-3 py-2 text-right whitespace-nowrap font-semibold', r.estimated ? 'text-text-muted' : 'text-text-primary')}>
-                      {r.pay || !r.estimated ? `${r.estimated || r.payStatus !== 'approved' ? '≈ ' : ''}${money(r.pay)}` : '—'}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span className={cn('text-[12px] font-semibold', PAY_TONE[r.payStatus])}>{PAY_STATUS_LABELS[r.payStatus]}</span>
-                      {r.disputed && <span className="ml-1 text-[12px] font-semibold text-brand-red">· Disputed</span>}
-                    </td>
-                  </tr>
-                ))}
-                {table.length === 0 && <tr><td colSpan={7} className="p-4"><EmptyState compact icon={Search} title="No jobs match these filters" action={!isDefault ? <button onClick={() => setF(DEFAULT_FILTERS)} className="h-10 px-4 rounded-md border border-border-main text-[13px] font-medium hover:bg-bg-tertiary">Reset filters</button> : undefined} /></td></tr>}
-              </tbody>
-            </table>
-          </CardContent>
-          <div className="px-3 pb-3"><ListPager pager={pager} noun="jobs" /></div>
-        </Card>
         <p className="text-[12px] text-text-muted">
-          My pay = what you're paid for the job: your weekly-log amount (Field Nation jobs pay 50% after the platform fee). Jobs not on a log show an estimate (~); helper jobs are priced by payroll. Time on site isn't shown — Field Nation hours aren't available to the app.
+          My pay = what you're paid for the job: your weekly-log amount (Field Nation jobs pay 50% after the platform fee). Jobs not on a log are an estimate (≈); helper jobs are priced by payroll. Job by job, see Assignments → History. Time on site isn't shown — Field Nation hours aren't available to the app.
         </p>
       </>)}
-
-      {openJob && <JobDetailDialog isOpen={!!openJob} setIsOpen={(o) => { if (!o) setOpenJob(null); }} mission={openJob} />}
     </div>
   );
 }
 
-type SortKey = 'date' | 'title' | 'customer' | 'type' | 'status' | 'pay' | 'payStatus';
 type Filters = {
   start: string | null; end: string | null; customer: string | null; type: string | null;
-  job: 'all' | 'completed' | 'open'; pay: PayStatus | null; search: string;
+  job: 'all' | 'completed' | 'open'; pay: PayStatus | null;
 };
-const DEFAULT_FILTERS: Filters = { start: null, end: null, customer: null, type: null, job: 'all', pay: null, search: '' };
-// Shared status colors (lib/status-styles.ts).
-const PAY_TONE = Object.fromEntries((Object.keys(PAY_STATUS_LABELS) as PayStatus[]).map(p => [p, TONE_TEXT[statusTone('pay', p)]])) as Record<PayStatus, string>;
+const DEFAULT_FILTERS: Filters = { start: null, end: null, customer: null, type: null, job: 'all', pay: null };
 const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 });
 const count = (v: number) => v.toLocaleString('en-US');
 const monthLabel = (ym: string) => new Date(`${ym}-01T12:00:00`).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-const dayLabel = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—');

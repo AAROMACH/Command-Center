@@ -12,7 +12,7 @@ export default function TechSopPage() {
   const { user } = useAuth();
   const sections = useHandbook(isProjectManager(user as never) ? ['tech', 'pm'] : ['tech']);
   return (
-    <div className="space-y-5 max-w-6xl mx-auto">
+    <div className="space-y-5 max-w-7xl mx-auto">
       <PageHeader eyebrow="Operations manual" icon={BookOpen} title="SOP"
         subtitle="How we work: field procedures, troubleshooting and safety." />
       <OperationsManualViewer sections={sections} />

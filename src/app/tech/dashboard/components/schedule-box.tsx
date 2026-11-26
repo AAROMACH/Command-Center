@@ -297,7 +297,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                         title or client name, and the card clips its overflow,
                                         so the button was unreachable instead of just tight. */}
                                     <div className="job-body !p-3 min-w-0 !flex-col !items-stretch sm:!flex-row sm:!items-center">
-                                        <div className="job-left text-left min-w-0 w-full">
+                                        <div className="job-left text-left min-w-0 w-full !items-stretch">
                                             <div className="flex items-center gap-2 mb-1 w-full justify-start text-left">
                                                 <Badge variant="outline" className="text-[10px] uppercase tracking-wide px-1.5 bg-bg-tertiary">
                                                     {wo.projectType === 'Project' ? <Briefcase size={10} className="mr-1"/> : <Wrench size={10} className="mr-1"/>}
@@ -305,10 +305,10 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                                 </Badge>
                                                 <span className="job-wo !text-[11px] !px-1.5">{displayWorkOrderNumber(wo)}</span>
                                             </div>
-                                            <div className="job-title-row !mb-1 !justify-start text-left">
-                                                <span className="job-title !text-[13px] !font-semibold !normal-case !tracking-normal text-left truncate w-full">{wo.title || wo.description}</span>
+                                            <div className="job-title-row !mb-1 !justify-start text-left w-full min-w-0">
+                                                <span className="job-title !text-[13px] !font-semibold !normal-case !tracking-normal text-left w-full min-w-0 line-clamp-2 sm:line-clamp-1">{wo.title || wo.description}</span>
                                             </div>
-                                            <div className="job-meta !gap-x-3 !gap-y-1 flex-wrap !justify-start text-left">
+                                            <div className="job-meta !gap-x-3 !gap-y-1 flex-wrap !justify-start text-left w-full min-w-0">
                                                 <div className="job-meta-item !text-[12px] text-left font-medium text-text-secondary"><CalendarIcon size={11} className="text-brand-blue"/> {(() => { const d = parseTacticalDate(wo.scheduleDate); return d ? format(d, 'EEE, MMM d') : (wo.scheduleDate || 'TBD'); })()}</div>
                                                 <div className="job-meta-item !text-[12px] text-left min-w-0 max-w-full"><Building2 size={11} className="text-text-muted"/> <span className="truncate">{wo.clientName}</span></div>
                                                 <div className="job-meta-item !text-[12px] text-left"><Clock size={11} className="text-accent-gold"/> {wo.scheduleTime}</div>

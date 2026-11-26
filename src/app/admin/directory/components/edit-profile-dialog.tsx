@@ -421,9 +421,11 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Sidebar */}
-          <nav className="w-40 shrink-0 border-r border-border-sub bg-bg-secondary py-3 flex flex-col gap-0.5 px-2">
+        <div className="flex flex-1 min-h-0 flex-col overflow-hidden sm:flex-row">
+          {/* Sections: a sideways swipe row on a phone, a rail from sm: up.
+              As a 160px rail it left barely 180px for the fields, which cut
+              the status dropdowns and the subrole names to two letters. */}
+          <nav className="flex shrink-0 gap-0.5 overflow-x-auto no-scrollbar border-b border-border-sub bg-bg-secondary px-2 py-2 sm:w-40 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r sm:py-3">
             {visibleSections.map(s => {
               const Icon = s.icon;
               return (
@@ -431,14 +433,14 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                   key={s.id}
                   onClick={() => setSection(s.id)}
                   className={cn(
-                    'flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all',
-                    'text-[10px] font-bold uppercase tracking-wider',
+                    'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-2.5 py-2 text-left transition-all',
+                    'min-h-[40px] text-[10px] font-bold uppercase tracking-wider sm:min-h-0',
                     activeSection === s.id
                       ? 'bg-brand-red/10 text-brand-red border border-brand-red/20'
                       : 'text-text-muted hover:bg-bg-tertiary hover:text-text-secondary border border-transparent',
                   )}
                 >
-                  <Icon size={11} />
+                  <Icon size={11} className="shrink-0" />
                   {s.label}
                 </button>
               );
@@ -446,14 +448,14 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
           </nav>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="min-w-0 flex-1 overflow-y-auto p-4 space-y-4 sm:p-5">
 
             {/* ── Basic Info ── */}
             {activeSection === 'basic' && (
               <div>
                 <h3 className={sectionHeading}><User size={11} /> Basic Information</h3>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className={labelCls}>Full Name *</Label>
                       <Input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Full name" />
@@ -463,7 +465,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Input className={inputCls} value={form.preferredName} onChange={e => set('preferredName', e.target.value)} placeholder="Goes by..." />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className={labelCls}>Job Title</Label>
                       <Input className={inputCls} value={form.jobTitle} onChange={e => set('jobTitle', e.target.value)} placeholder="e.g. Lead Technician" />
@@ -473,7 +475,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Input className={inputCls} value={form.department} onChange={e => set('department', e.target.value)} placeholder="e.g. Field Operations" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className={labelCls}>Email</Label>
                       <div className="relative">
@@ -517,7 +519,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
               <div>
                 <h3 className={sectionHeading}><Shield size={11} /> Status &amp; Access</h3>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className={labelCls}>Approval Status</Label>
                       <Select value={form.approvalStatus} onValueChange={v => set('approvalStatus', v as FormState['approvalStatus'])}>
@@ -561,7 +563,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                             <GroupIcon size={11} className={group.accent} />
                             <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{group.label}</span>
                           </div>
-                          <div className="grid grid-cols-2 gap-1.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {SUBROLES_BY_PORTAL[group.portal].map(role => {
                               const def = SUBROLE_DEFINITIONS[role];
                               const Icon = ROLE_ICONS[role] ?? Shield;
@@ -583,9 +585,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                                     selected ? 'bg-brand-red border-brand-red' : 'border-border-main bg-bg-primary')}>
                                     {selected && <div className="w-1.5 h-1.5 rounded-sm bg-white" />}
                                   </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                      <Icon size={11} className={selected ? group.accent : 'text-text-muted'} />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex min-w-0 items-center gap-1.5">
+                                      <Icon size={11} className={cn('shrink-0', selected ? group.accent : 'text-text-muted')} />
                                       <span className="text-[10px] font-bold truncate">{def.label}</span>
                                     </div>
                                     <p className="text-[11px] text-text-muted leading-tight mt-0.5">{def.permissions.length} permissions</p>
@@ -722,7 +724,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                   <p className="text-[11px] text-accent-gold mb-3">Only payroll admins and super admins can change pay and tax details.</p>
                 )}
                 <fieldset disabled={!canPay} className="space-y-4 disabled:opacity-60">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className={labelCls}>Worker Classification</Label>
                       <Select value={form.workerType || '__unset__'} onValueChange={v => set('workerType', v === '__unset__' ? '' : v)}>
@@ -748,7 +750,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
 
                   <div className="border-t border-border-sub pt-3 space-y-3">
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Payout</p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className={labelCls}>Payout Method</Label>
                         <Select value={form.payoutMethod || '__unset__'} onValueChange={v => set('payoutMethod', v === '__unset__' ? '' : v)}>
@@ -772,7 +774,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                   {form.workerType !== 'w2_employee' && form.workerType !== 'not_paid' && (
                     <div className="border-t border-border-sub pt-3 space-y-3">
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">1099 Payee (from their W-9)</p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className={labelCls}>Legal Name (W-9 line 1)</Label>
                           <Input className={inputCls} value={form.payeeLegalName} onChange={e => set('payeeLegalName', e.target.value)} placeholder="As shown on their tax return" />
@@ -782,7 +784,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Input className={inputCls} value={form.payeeBusinessName} onChange={e => set('payeeBusinessName', e.target.value)} placeholder="LLC / DBA, if any" />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className={labelCls}>Tax ID Type</Label>
                           <Select value={form.taxIdType || '__unset__'} onValueChange={v => set('taxIdType', v === '__unset__' ? '' : v)}>
@@ -836,7 +838,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
               <div>
                 <h3 className={sectionHeading}><Building2 size={11} /> Billing &amp; Tax</h3>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className={labelCls}>Company Name</Label>
                       <Input className={inputCls} value={form.clientCompany} onChange={e => set('clientCompany', e.target.value)} placeholder="Acme Corp" />
@@ -862,7 +864,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                   <div className="border-t border-border-sub pt-3">
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Billing Details</p>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className={labelCls}>Billing Contact Name</Label>
                           <Input className={inputCls} value={form.billingContactName} onChange={e => set('billingContactName', e.target.value)} placeholder="AP / Contact Name" />
@@ -913,7 +915,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           })}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className={labelCls}>Payment Terms</Label>
                           <Select value={form.billingTerms} onValueChange={v => set('billingTerms', v)}>
@@ -942,7 +944,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <AddressAutocompleteInput className={inputCls} value={form.billingAddress} onChange={v => set('billingAddress', v)}
                           placeholder={form.address.trim() || 'Defaults to the address under Basic Info'} />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className={labelCls}>Sales Tax</Label>
                           <Select value={form.taxStatus || '__unset__'} onValueChange={v => set('taxStatus', (v === '__unset__' ? '' : v) as FormState['taxStatus'])}>
